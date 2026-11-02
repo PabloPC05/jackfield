@@ -64,6 +64,10 @@ dropped is the half that breaks real setups:
   discovery, PKCE and refresh; tokens in one file per server at mode 0600, and
   no agent ever sees one. The gateway never starts a login by itself — one that
   could is one an agent could aim at a server of its choosing.
+- **You should not have to edit YAML to move a server.** `/panel` is a page
+  where you connect a server once and then decide, with one button per server,
+  which of your addresses carries it. It writes to your file — comments and
+  all — and the affected agent sees the change without a restart.
 - **Configuration belongs in git.** No database, no admin panel writing state
   behind your back. One file, secrets referenced rather than embedded, and a
   deployment is a diff you can read. `/status` reads it back to you; it never

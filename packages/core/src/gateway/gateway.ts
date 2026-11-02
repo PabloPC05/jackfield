@@ -13,6 +13,8 @@ import { GatewaySession } from './session.js';
 export interface GatewayOptions {
     config: Config;
     logger?: Logger;
+    /** Where the configuration came from, so the panel knows what to edit. */
+    configPath?: string;
 }
 
 interface CatalogEntry {
@@ -29,20 +31,28 @@ interface CatalogEntry {
  * client's sessions. Sessions own their own connections for actual calls.
  */
 export class Gateway {
-    readonly config: Config;
+    private current: Config;
     readonly logger: Logger;
 
     private readonly selections = new Map<string, Selection>();
     private readonly catalogs = new Map<string, CatalogEntry>();
-    private readonly discovery: UpstreamPool;
+    private discovery: UpstreamPool;
     private readonly notifier: Notifier;
     readonly approvals: ApprovalStore;
     /** Executors that dial in rather than being called. */
     readonly tunnels: TunnelHub;
     private closed = false;
+    /** The file this gateway was loaded from, when there was one. */
+    readonly configPath: string | undefined;
+
+    /** The configuration as it stands. Replaced wholesale by {@link reload}. */
+    get config(): Config {
+        return this.current;
+    }
 
     constructor(options: GatewayOptions) {
-        this.config = options.config;
+        this.current = options.config;
+        this.configPath = options.configPath;
         this.logger =
             options.logger ??
             createLogger({ level: this.config.server.logLevel, format: this.config.server.logFormat });
@@ -53,17 +63,7 @@ export class Gateway {
             onAttach: () => this.invalidateCatalogs()
         });
 
-        const enabled = Object.entries(this.config.upstreams)
-            .filter(([, upstream]) => upstream.enabled)
-            .map(([id]) => id);
-
-        this.discovery = new UpstreamPool({
-            config: this.config,
-            tunnelFetch: name => this.tunnels.fetchThrough(name),
-            upstreamIds: enabled,
-            logger: this.logger.child({ pool: 'discovery' }),
-            bridge: this.createDiscoveryBridge()
-        });
+        this.discovery = this.createDiscoveryPool();
 
         this.notifier = new Notifier(this.config.notify, this.logger.child({ part: 'notify' }));
         this.approvals = new ApprovalStore({
@@ -73,9 +73,67 @@ export class Gateway {
             logger: this.logger.child({ part: 'approvals' })
         });
 
+        this.rebuildSelections();
+    }
+
+    private createDiscoveryPool(): UpstreamPool {
+        const enabled = Object.entries(this.config.upstreams)
+            .filter(([, upstream]) => upstream.enabled)
+            .map(([id]) => id);
+
+        return new UpstreamPool({
+            config: this.config,
+            tunnelFetch: name => this.tunnels.fetchThrough(name),
+            upstreamIds: enabled,
+            logger: this.logger.child({ pool: 'discovery' }),
+            bridge: this.createDiscoveryBridge()
+        });
+    }
+
+    private rebuildSelections(): void {
+        this.selections.clear();
         for (const clientId of Object.keys(this.config.clients)) {
             this.selections.set(clientId, resolveSelection(this.config, clientId));
         }
+    }
+
+    private readonly reloadListeners = new Set<(changedClients: string[]) => void>();
+
+    /** Called after a reload with the clients whose surface changed. */
+    onReload(listener: (changedClients: string[]) => void): () => void {
+        this.reloadListeners.add(listener);
+        return () => this.reloadListeners.delete(listener);
+    }
+
+    /**
+     * Takes a new configuration without restarting.
+     *
+     * Conversations whose surface changed are closed on purpose: a client that
+     * loses its session opens a new one by itself — the same mechanism that
+     * makes a restart invisible — and comes back seeing the new set. Leaving
+     * them on a stale view until they happened to reconnect is how a panel
+     * ends up lying about what it just saved.
+     */
+    async reload(config: Config): Promise<string[]> {
+        const before = new Map<string, string>();
+        for (const [clientId, selection] of this.selections) before.set(clientId, fingerprint(selection));
+
+        const previous = this.discovery;
+        this.current = config;
+        this.rebuildSelections();
+        this.catalogs.clear();
+        this.discovery = this.createDiscoveryPool();
+        await previous.closeAll();
+
+        const changed: string[] = [];
+        for (const clientId of new Set([...before.keys(), ...this.selections.keys()])) {
+            const now = this.selections.get(clientId);
+            if (!now || before.get(clientId) !== fingerprint(now)) changed.push(clientId);
+        }
+
+        this.logger.info('configuration reloaded', { clients: this.clientIds().length, changed });
+        for (const listener of this.reloadListeners) listener(changed);
+        return changed;
     }
 
     /**
@@ -185,4 +243,17 @@ export class Gateway {
         this.catalogs.clear();
         await this.discovery.closeAll();
     }
+}
+
+/** A cheap comparison of what a client is allowed to see. */
+function fingerprint(selection: Selection): string {
+    return JSON.stringify([
+        selection.upstreamIds,
+        selection.include,
+        selection.exclude,
+        selection.expose,
+        selection.alwaysExpose,
+        selection.prefix,
+        selection.permissions
+    ]);
 }

@@ -208,6 +208,32 @@ upstreams:
     remote: browser          # id on the executor; defaults to this upstream's id
 ```
 
+## `panel`
+
+```yaml
+panel:
+  key: ${file:secrets/panel.key}     # sin clave, el panel no existe
+  publicUrl: https://gateway.example.com
+```
+
+A page at `/panel` where you connect servers and decide, with one button per
+server, which of them each address carries. It writes to this very file —
+comments, order and formatting survive, because the document is edited rather
+than regenerated — validates the result before saving, keeps the previous
+version as `.bak`, and writes atomically.
+
+The panel key is its own: no agent key opens the panel, and the panel key
+opens nothing else. Arrive once with `?key=…` and it moves into an HttpOnly
+cookie so it leaves your address bar. Writes additionally require a header
+that a page on another site cannot set.
+
+A change takes effect immediately: the gateway reloads, and the conversations
+whose surface changed are closed so their clients open a new one and see the
+new set — the same path a restart takes.
+
+On a host with a read-only filesystem the panel still shows everything and
+says it cannot save, rather than failing halfway through.
+
 ## `auth`
 
 | Key | Default | Meaning |

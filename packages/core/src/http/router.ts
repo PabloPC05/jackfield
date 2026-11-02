@@ -8,6 +8,7 @@ import { errorMessage } from '../util/errors.js';
 import type { Logger } from '../util/logger.js';
 import { renderApprovalMissing, renderApprovalPage } from '../gateway/approvals.js';
 import { KeyRegistry, type Principal } from './auth.js';
+import { PanelMount } from '../panel/mount.js';
 import { buildStatusView, renderStatusPage } from './status.js';
 import { tokenMatches, type ReplyFrame } from './tunnel.js';
 
@@ -42,15 +43,27 @@ export interface RouterOptions {
 export class Router {
     private readonly gateway: Gateway;
     private readonly logger: Logger;
-    private readonly keys: KeyRegistry;
+    private keys: KeyRegistry;
     private readonly sessions = new Map<string, LiveSession>();
+    private readonly panel: PanelMount;
     private sweeper?: ReturnType<typeof setInterval>;
 
     constructor(options: RouterOptions) {
         this.gateway = options.gateway;
         this.logger = (options.logger ?? options.gateway.logger).child({ part: 'http' });
         this.keys = new KeyRegistry(options.gateway.config);
+        this.panel = new PanelMount(options.gateway, this.logger);
         this.startSweeper();
+
+        // A change in the panel takes effect at once: the conversations whose
+        // surface changed are closed, and their clients open a new one on
+        // their own, which is the same path a restart takes.
+        options.gateway.onReload(changed => {
+            this.keys = new KeyRegistry(options.gateway.config);
+            for (const live of [...this.sessions.values()]) {
+                if (changed.includes(live.clientId)) void this.dropSession(live.id, 'its configuration changed');
+            }
+        });
     }
 
     get sessionCount(): number {
@@ -80,6 +93,10 @@ export class Router {
         // by a person, not by an agent, so they take no client key.
         const approval = /^\/approve\/([A-Za-z0-9_-]{20,200})$/.exec(path);
         if (approval?.[1]) return this.serveApproval(request, approval[1]);
+
+        if (path === '/panel' || path.startsWith('/panel/')) {
+            return this.panel.handle(request, path.slice('/panel'.length));
+        }
 
         const tunnel = /^\/executor\/([a-z0-9_-]{1,64})\/(attach|reply)$/.exec(path);
         if (tunnel?.[1] && tunnel[2]) return this.serveTunnel(request, tunnel[1], tunnel[2] as 'attach' | 'reply');

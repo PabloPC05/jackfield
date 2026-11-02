@@ -393,6 +393,22 @@ export const configSchema = z.object({
     /** Permission rules applied to every client, after its own. */
     permissions: z.array(permissionRuleSchema).default([]),
 
+    /**
+     * The panel: a page where you connect servers and decide, with a button,
+     * which of them each agent's address carries.
+     *
+     * It writes to this very file, comments and all. Off unless you give it a
+     * key, because it is the one part of the gateway that can change things.
+     */
+    panel: z
+        .object({
+            /** Key that opens the panel. Nothing else accepts it. */
+            key: z.string().min(16).optional(),
+            /** Base URL shown for the addresses to copy. Defaults to `server.publicUrl`. */
+            publicUrl: z.string().url().optional()
+        })
+        .default({}),
+
     /** Where OAuth credentials live, and what redirect URI to register. */
     auth: z
         .object({
@@ -440,6 +456,7 @@ export type ClientConfig = z.output<typeof clientSchema>;
 export type PermissionRule = z.output<typeof permissionRuleSchema>;
 export type ApprovalsConfig = Config['approvals'];
 export type AuthConfig = Config['auth'];
+export type PanelConfig = Config['panel'];
 export type OAuthUpstreamConfig = z.output<typeof oauthSchema>;
 export type NotifyConfig = NonNullable<Config['notify']>;
 export type CliCommandConfig = z.output<typeof cliCommandSchema>;

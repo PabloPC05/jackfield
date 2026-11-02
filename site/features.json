@@ -1,144 +1,265 @@
 [
-  { "id": "una-url", "group": "control", "status": "done", "star": true,
+  {
+    "id": "panel",
+    "group": "control",
+    "status": "done",
+    "star": true,
+    "title": "Un panel donde conectas y repartes con un botón",
+    "body": "Conectas un servidor una vez y luego decides, con un clic por servidor, cuál lleva cada dirección. Sin tocar un archivo, sin reiniciar nada: el agente afectado se reconecta solo y ya ve lo nuevo.",
+    "detail": "Y lo que pulsas se escribe en tu archivo, con tus comentarios intactos."
+  },
+  {
+    "id": "general",
+    "group": "control",
+    "status": "done",
+    "title": "Una dirección general y las que quieras aparte",
+    "body": "Una que lleve todo, ahora y lo que conectes mañana, y luego una por IA con lo justo. Cada una con su dirección y su clave, listas para copiar.",
+    "detail": "Quitar un servidor de la general no la convierte en una lista fija: sigue recogiendo lo nuevo."
+  },
+  {
+    "id": "una-url",
+    "group": "control",
+    "status": "done",
+    "star": true,
     "title": "Una URL y una clave para cada agente",
     "body": "Conectas Claude Code, claude.ai, Codex o tu propia app pegando una dirección. Añadir un servidor nuevo lo ven todos a la vez, sin tocar la configuración de ninguno.",
-    "detail": "Y si te preocupa una clave, la cambias sin cortarle el acceso al resto." },
-
-  { "id": "cada-uno", "group": "control", "status": "done",
+    "detail": "Y si te preocupa una clave, la cambias sin cortarle el acceso al resto."
+  },
+  {
+    "id": "cada-uno",
+    "group": "control",
+    "status": "done",
     "title": "Cada agente ve solo lo que quieres",
     "body": "A tu portátil, todo. Al agente del móvil, el correo y el calendario. Al que dejas corriendo solo, lo mínimo. Se aplica tanto a lo que lista como a lo que puede llamar: lo que no ve, tampoco lo ejecuta.",
-    "detail": "Perfiles reutilizables, para no repetir la lista en cada agente." },
-
-  { "id": "sin-cabeceras", "group": "control", "status": "done", "star": true,
+    "detail": "Perfiles reutilizables, para no repetir la lista en cada agente."
+  },
+  {
+    "id": "sin-cabeceras",
+    "group": "control",
+    "status": "done",
+    "star": true,
     "title": "Funciona con agentes que no admiten cabeceras",
     "body": "Hay clientes conocidos que no dejan mandar una cabecera de autorización y por eso no pueden usar casi ninguna pasarela. Aquí la clave va en la propia dirección.",
-    "detail": "Y entonces la dirección es el secreto: no se escribe en ningún registro." },
-
-  { "id": "un-archivo", "group": "control", "status": "done", "star": true,
+    "detail": "Y entonces la dirección es el secreto: no se escribe en ningún registro."
+  },
+  {
+    "id": "un-archivo",
+    "group": "control",
+    "status": "done",
+    "star": true,
     "title": "Todo cabe en un archivo que puedes leer",
     "body": "Sin base de datos y sin un panel que cambie cosas por detrás. La configuración entera es un archivo de texto: va en tu repositorio, se revisa en un cambio y mudarse es copiarlo.",
-    "detail": "Las contraseñas no van dentro: se señalan y se leen al arrancar." },
-
-  { "id": "coste", "group": "ahorro", "status": "done",
+    "detail": "Las contraseñas no van dentro: se señalan y se leen al arrancar."
+  },
+  {
+    "id": "coste",
+    "group": "ahorro",
+    "status": "done",
     "title": "Ves lo que te cuesta cada servidor",
     "body": "Un comando te saca la cuenta: cuántas herramientas aporta cada servidor, cuánto ocupan sus descripciones y cuántos tokens son. Es lo que el agente carga antes de hacer nada.",
-    "detail": "Medido de verdad, no estimado a ojo." },
-
-  { "id": "busqueda", "group": "ahorro", "status": "done",
+    "detail": "Medido de verdad, no estimado a ojo."
+  },
+  {
+    "id": "busqueda",
+    "group": "ahorro",
+    "status": "done",
     "title": "Quinientas herramientas, o dos",
     "body": "Si tu cliente carga todas las definiciones en cada mensaje, puedes darle solo dos: una para buscar la herramienta que necesita y otra para usarla. El catálogo se queda en el servidor.",
-    "detail": "Las que ya se sepa de memoria las puede seguir llamando por su nombre." },
-
-  { "id": "cli", "group": "ahorro", "status": "done", "star": true,
+    "detail": "Las que ya se sepa de memoria las puede seguir llamando por su nombre."
+  },
+  {
+    "id": "cli",
+    "group": "ahorro",
+    "status": "done",
+    "star": true,
     "title": "Un programa entero como una sola herramienta",
     "body": "Hay servicios cuyo servidor define ciento veinte herramientas y que usas dos veces al mes. Su línea de comandos ocupa una. El agente pide ayuda al programa, como harías tú.",
-    "detail": "Sin shell, con el programa fijado y la lista de órdenes que permitas." },
-
-  { "id": "recorte", "group": "ahorro", "status": "done",
+    "detail": "Sin shell, con el programa fijado y la lista de órdenes que permitas."
+  },
+  {
+    "id": "recorte",
+    "group": "ahorro",
+    "status": "done",
     "title": "Una respuesta enorme no te arruina la conversación",
     "body": "Si un servidor contesta con medio megabyte, se recorta y se le dice al agente cuánto se ha quitado y que pida menos. Mejor eso que perder el hilo entero.",
-    "detail": "El límite lo pones tú, global o por servidor." },
-
-  { "id": "descripciones", "group": "ahorro", "status": "done",
+    "detail": "El límite lo pones tú, global o por servidor."
+  },
+  {
+    "id": "descripciones",
+    "group": "ahorro",
+    "status": "done",
     "title": "Reescribes lo que el agente lee, sin tocar el servidor",
     "body": "Esa herramienta con una descripción vaga que el agente nunca acierta a usar: le cambias el nombre visible, la descripción y las pistas desde tu archivo.",
-    "detail": "Lo que no se toca es qué datos pide: eso es cosa del servidor." },
-
-  { "id": "permisos", "group": "mando", "status": "done",
+    "detail": "Lo que no se toca es qué datos pide: eso es cosa del servidor."
+  },
+  {
+    "id": "permisos",
+    "group": "mando",
+    "status": "done",
     "title": "Pregunta antes de borrar",
     "body": "Marcas qué herramientas se ejecutan sin más, cuáles tienen que pedirte permiso y cuáles no se tocan. El permiso te lo pide a ti, nunca se lo da el agente a sí mismo.",
-    "detail": "Y si el cliente no sabe preguntar, deniega en vez de pasar de largo." },
-
-  { "id": "movil", "group": "mando", "status": "done", "star": true,
+    "detail": "Y si el cliente no sabe preguntar, deniega en vez de pasar de largo."
+  },
+  {
+    "id": "movil",
+    "group": "mando",
+    "status": "done",
+    "star": true,
     "title": "Apruebas desde el móvil, aunque no estés mirando",
     "body": "El agente se queda esperando y a ti te llega un aviso con un enlace: ves qué va a hacer y con qué datos, y decides. El agente nunca ve ese enlace, así que no puede aprobarse solo.",
-    "detail": "De un solo uso, caduca, y puedes pedirle además una frase secreta." },
-
-  { "id": "avisos", "group": "mando", "status": "done",
+    "detail": "De un solo uso, caduca, y puedes pedirle además una frase secreta."
+  },
+  {
+    "id": "avisos",
+    "group": "mando",
+    "status": "done",
     "title": "Te enteras de lo que importa",
     "body": "Un aviso al móvil cuando se ejecuta algo delicado, cuando termina y cuando se deniega. Eliges qué herramientas vigilar.",
-    "detail": "Si el avisador está caído, la llamada sigue: nunca bloquea." },
-
-  { "id": "credenciales", "group": "mando", "status": "done",
+    "detail": "Si el avisador está caído, la llamada sigue: nunca bloquea."
+  },
+  {
+    "id": "credenciales",
+    "group": "mando",
+    "status": "done",
     "title": "Tus contraseñas se quedan aquí",
     "body": "Entras una vez en los servicios que usan OAuth y la pasarela mantiene la sesión viva sola. Ningún agente llega a ver un token.",
-    "detail": "Guardados en tu máquina, en un archivo por servicio que solo tú puedes leer." },
-
-  { "id": "formularios", "group": "fiable", "status": "done", "star": true,
+    "detail": "Guardados en tu máquina, en un archivo por servicio que solo tú puedes leer."
+  },
+  {
+    "id": "formularios",
+    "group": "fiable",
+    "status": "done",
+    "star": true,
     "title": "Cuando un servidor te pregunta algo, te llega",
     "body": "Tu navegador pide el código del banco, un servidor quiere que confirmes. Casi todas las pasarelas dejan esa pregunta a medias y el agente se queda colgado para siempre. Aquí llega a quien está manejando al agente.",
-    "detail": "Y si ese agente no sabe enseñar preguntas, se le dice al servidor en vez de dejarlo esperando." },
-
-  { "id": "largas", "group": "fiable", "status": "done", "star": true,
+    "detail": "Y si ese agente no sabe enseñar preguntas, se le dice al servidor en vez de dejarlo esperando."
+  },
+  {
+    "id": "largas",
+    "group": "fiable",
+    "status": "done",
+    "star": true,
     "title": "Las tareas largas no se cortan a los cinco minutos",
     "body": "Una descarga, un despliegue, un navegador trabajando diez minutos. La pasarela va pasando las señales de avance al agente por el canal correcto, que es justo lo que hace que no se rinda.",
-    "detail": "El detalle que casi todo el mundo se deja, y por el que fallan estas llamadas." },
-
-  { "id": "reinicio", "group": "fiable", "status": "done", "star": true,
+    "detail": "El detalle que casi todo el mundo se deja, y por el que fallan estas llamadas."
+  },
+  {
+    "id": "reinicio",
+    "group": "fiable",
+    "status": "done",
+    "star": true,
     "title": "Reinicias y no te deja ningún conector en rojo",
     "body": "Cuando la pasarela se reinicia, los agentes abren una conversación nueva por su cuenta. Sin entrar a reconectar a mano en cada uno.",
-    "detail": "Una respuesta mal elegida aquí deja clientes reintentando para siempre." },
-
-  { "id": "caido", "group": "fiable", "status": "done",
+    "detail": "Una respuesta mal elegida aquí deja clientes reintentando para siempre."
+  },
+  {
+    "id": "caido",
+    "group": "fiable",
+    "status": "done",
     "title": "Un servidor caído no se lleva a los demás",
     "body": "El que no responde se queda fuera y al agente se le dice cuál falta, en vez de dejarle un hueco silencioso donde buscará una herramienta que ya no está.",
-    "detail": "O al revés, si prefieres que falle a gritos: tú eliges." },
-
-  { "id": "rapido", "group": "fiable", "status": "done",
+    "detail": "O al revés, si prefieres que falle a gritos: tú eliges."
+  },
+  {
+    "id": "rapido",
+    "group": "fiable",
+    "status": "done",
     "title": "Listar no despierta nada",
     "body": "Un agente que pregunta qué herramientas hay no hace arrancar veinte servidores. Solo se conecta al que de verdad va a usar.",
-    "detail": "El catálogo se comparte y se refresca cuando algo cambia." },
-
-  { "id": "nombres", "group": "fiable", "status": "done",
+    "detail": "El catálogo se comparte y se refresca cuando algo cambia."
+  },
+  {
+    "id": "nombres",
+    "group": "fiable",
+    "status": "done",
     "title": "Dos servidores con la misma herramienta no se pisan",
     "body": "Si dos traen una herramienta llamada «buscar», el agente ve las dos y sabe cuál es cuál. Ninguna desaparece en silencio.",
-    "detail": "Lo que desaparece sin avisar es lo que tardas semanas en notar." },
-
-  { "id": "vista", "group": "fiable", "status": "done",
+    "detail": "Lo que desaparece sin avisar es lo que tardas semanas en notar."
+  },
+  {
+    "id": "vista",
+    "group": "fiable",
+    "status": "done",
     "title": "Una página para ver qué ve cada clave",
     "body": "Abres una dirección y ves el estado de cada servidor, las herramientas que acaba viendo ese agente y lo que cuestan.",
-    "detail": "Solo mira: lo que manda sigue siendo el archivo." },
-
-  { "id": "maquina", "group": "donde", "status": "done", "star": true,
+    "detail": "Solo mira: lo que manda sigue siendo el archivo."
+  },
+  {
+    "id": "maquina",
+    "group": "donde",
+    "status": "done",
+    "star": true,
     "title": "Lo que necesita tu ordenador, corre en tu ordenador",
     "body": "Un navegador con tus sesiones, una terminal, programas que se lanzan al vuelo: nada de eso vive en la nube. Corre en tu máquina y la pasarela lo alcanza igual.",
-    "detail": "Así el sitio donde la alojes no decide qué herramientas puedes tener." },
-
-  { "id": "sin-puertos", "group": "donde", "status": "done", "star": true,
+    "detail": "Así el sitio donde la alojes no decide qué herramientas puedes tener."
+  },
+  {
+    "id": "sin-puertos",
+    "group": "donde",
+    "status": "done",
+    "star": true,
     "title": "Tu máquina no abre ni un puerto",
     "body": "Es ella la que llama a la pasarela y mantiene la línea abierta. Vale para un portátil detrás del router de casa, sin reenvíos ni VPN. Si se cae, vuelve sola.",
-    "detail": "Y por esa misma línea sigue pudiendo preguntarte cosas." },
-
-  { "id": "navegador", "group": "donde", "status": "done",
+    "detail": "Y por esa misma línea sigue pudiendo preguntarte cosas."
+  },
+  {
+    "id": "navegador",
+    "group": "donde",
+    "status": "done",
     "title": "Un navegador que no te pide la contraseña cada vez",
     "body": "El perfil se queda en disco, así que las sesiones iniciadas siguen ahí mañana. Y sale por tu conexión, que da muchos menos problemas al entrar en sitios.",
-    "detail": "Receta lista para copiar en los ejemplos." },
-
-  { "id": "terminal", "group": "donde", "status": "done",
+    "detail": "Receta lista para copiar en los ejemplos."
+  },
+  {
+    "id": "terminal",
+    "group": "donde",
+    "status": "done",
     "title": "Una terminal con correa corta",
     "body": "En vez de darle a un agente acceso de administrador, le das las órdenes concretas que puede ejecutar, en las máquinas que elijas.",
-    "detail": "Con tope de tiempo y de cuánta salida puede devolverte." },
-
-  { "id": "donde-sea", "group": "donde", "status": "done",
+    "detail": "Con tope de tiempo y de cuánta salida puede devolverte."
+  },
+  {
+    "id": "donde-sea",
+    "group": "donde",
+    "status": "done",
     "title": "Donde te apetezca ponerla",
     "body": "Un proceso suelto, Docker, systemd, un módulo de NixOS o una función sin servidor. La misma pasarela, sin cambiar nada del archivo.",
-    "detail": "La nube es una opción más, no un requisito." },
-
-  { "id": "arranque", "group": "donde", "status": "done",
+    "detail": "La nube es una opción más, no un requisito."
+  },
+  {
+    "id": "arranque",
+    "group": "donde",
+    "status": "done",
     "title": "Se instala y se comprueba en un minuto",
     "body": "Un comando te dice si todo conecta, otro te imprime lo que tienes que pegar en cada agente y otro te genera las claves.",
-    "detail": "Trae un ejemplo que funciona sin instalar nada ni conectarse a internet." },
-
-  { "id": "roadmap-code", "group": "camino", "status": "planned",
+    "detail": "Trae un ejemplo que funciona sin instalar nada ni conectarse a internet."
+  },
+  {
+    "id": "roadmap-code",
+    "group": "camino",
+    "status": "planned",
     "title": "Que el agente escriba el guion",
-    "body": "Encadenar varias herramientas en un pequeño programa y devolver solo el resultado, en vez de ir una por una." },
-  { "id": "roadmap-busqueda", "group": "camino", "status": "planned",
+    "body": "Encadenar varias herramientas en un pequeño programa y devolver solo el resultado, en vez de ir una por una."
+  },
+  {
+    "id": "roadmap-busqueda",
+    "group": "camino",
+    "status": "planned",
     "title": "Buscar por significado",
-    "body": "Hoy la búsqueda de herramientas va por palabras. Entender lo que pides, aunque lo digas de otra manera." },
-  { "id": "roadmap-personas", "group": "camino", "status": "planned",
+    "body": "Hoy la búsqueda de herramientas va por palabras. Entender lo que pides, aunque lo digas de otra manera."
+  },
+  {
+    "id": "roadmap-personas",
+    "group": "camino",
+    "status": "planned",
     "title": "Más de una persona",
-    "body": "Que dos personas compartan la instalación sin compartir nada más: ni claves, ni vista, ni conversaciones." },
-  { "id": "roadmap-catalogo", "group": "camino", "status": "planned",
+    "body": "Que dos personas compartan la instalación sin compartir nada más: ni claves, ni vista, ni conversaciones."
+  },
+  {
+    "id": "roadmap-catalogo",
+    "group": "camino",
+    "status": "planned",
     "title": "Añadir servidores conocidos con un comando",
-    "body": "Sin que la configuración deje de ser un archivo que puedes leer." }
+    "body": "Sin que la configuración deje de ser un archivo que puedes leer."
+  }
 ]

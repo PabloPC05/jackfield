@@ -21,7 +21,7 @@ export async function commandServe(args: { config?: string; host?: string; port?
     if (args.logLevel) config.server.logLevel = args.logLevel as typeof config.server.logLevel;
 
     const logger = createLogger({ level: config.server.logLevel, format: config.server.logFormat });
-    const gateway = new Gateway({ config, logger });
+    const gateway = new Gateway({ config, logger, configPath: path });
     const running = await serve({
         gateway,
         ...(args.host ? { host: args.host } : {}),
@@ -29,6 +29,10 @@ export async function commandServe(args: { config?: string; host?: string; port?
         ...(args.warm ? { warmUp: true } : {}),
         logger
     });
+
+    if (config.panel.key) {
+        logger.info('the panel is at', { url: `${running.url}/panel?key=<la clave del panel>` });
+    }
 
     logger.info('jackfield is listening', {
         url: `${running.url}/mcp`,

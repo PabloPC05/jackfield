@@ -29,7 +29,11 @@ export interface Selection {
 /** Resolves upstream selectors (`*`, `id`, `tag:name`, `glob*`) to concrete ids, in config order. */
 export function resolveUpstreamSelectors(config: Config, selectors: string[] | undefined): string[] {
     const all = Object.entries(config.upstreams).filter(([, upstream]) => upstream.enabled);
-    if (!selectors || selectors.length === 0) return all.map(([id]) => id);
+    // Not saying which is "all of them". Saying "none of them" is an empty
+    // list, and must stay empty: a client that was given nothing on purpose
+    // should not quietly end up with everything.
+    if (selectors === undefined) return all.map(([id]) => id);
+    if (selectors.length === 0) return [];
 
     const chosen = new Set<string>();
     for (const selector of selectors) {

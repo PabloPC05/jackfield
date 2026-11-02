@@ -87,6 +87,27 @@
     margin:0.5rem 0 0; font-weight:660; }
   h2 + p { color:var(--ink-2); margin:0.8rem 0 0; font-size:1.02rem; }
 
+  /* muestra del panel */
+  .panel-muestra { display:grid; grid-template-columns:minmax(220px,300px) 1fr; gap:1.5rem;
+    border:1px solid var(--line); border-radius:12px; padding:1.5rem; margin-top:2.2rem; background:var(--bg-2); }
+  @media (max-width:760px) { .panel-muestra { grid-template-columns:1fr; } }
+  .pm-tit { display:block; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:600; margin-bottom:0.8rem; }
+  .pm-item { display:flex; align-items:center; gap:0.5rem; border:1px solid var(--line);
+    background:var(--bg); border-radius:7px; padding:0.5rem 0.7rem; margin-bottom:0.45rem; font-size:0.9rem; }
+  .pm-item em { margin-left:auto; font-style:normal; font-family:var(--mono); font-size:0.74rem; color:var(--ink-3); }
+  .pm-pt { width:7px; height:7px; border-radius:50%; background:var(--ink); flex:none; }
+  .pm-add { font-size:0.85rem; color:var(--ink-3); border:1px dashed var(--line-2); border-radius:7px;
+    padding:0.5rem 0.7rem; text-align:center; margin-top:0.3rem; }
+  .pm-dest { border:1px solid var(--line); background:var(--bg); border-radius:9px;
+    padding:0.8rem 0.9rem; margin-bottom:0.6rem; }
+  .pm-dest b { font-size:0.95rem; }
+  .pm-dest em { font-style:normal; color:var(--ink-3); font-size:0.82rem; margin-left:0.5rem; }
+  .pm-sw { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.6rem; }
+  .pm-sw span { font-size:0.82rem; border:1px solid var(--line-2); border-radius:999px;
+    padding:0.18rem 0.6rem; color:var(--ink-3); }
+  .pm-sw span.on { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+
   /* problema */
   .problemas { display:grid; grid-template-columns:repeat(auto-fit, minmax(265px,1fr)); gap:1rem; margin-top:2.2rem; }
   .problema { border:1px solid var(--line); border-radius:10px; padding:1.3rem 1.4rem; background:var(--bg-2); }
@@ -158,6 +179,7 @@
       jackfield
     </a>
     <nav>
+      <a href="#panel">El panel</a>
       <a href="#para-que" class="oculta">Para qué</a>
       <a href="#funciones">Qué hace</a>
       <a href="#como" class="oculta">Cómo se usa</a>
@@ -172,11 +194,11 @@
     <h1>Un solo enchufe para todos tus agentes.</h1>
     <p class="entrada">
       Jackfield reúne todos tus servidores MCP detrás de una dirección por agente.
-      Decides quién llega a qué en un archivo, apruebas desde el móvil lo que importa,
-      y nada se queda colgado por el camino.
+      Conectas cada servidor una vez y repartes con un botón quién lleva qué,
+      apruebas desde el móvil lo que importa, y nada se queda colgado por el camino.
     </p>
     <div class="acciones">
-      <a class="btn" href="#como">Cómo se usa</a>
+      <a class="btn" href="#panel">Ver el panel</a>
       <a class="btn fantasma" href="#funciones">Qué hace</a>
     </div>
     <p class="bajo">Corre en tu ordenador, en tu servidor o en la nube. Tú eliges.</p>
@@ -220,6 +242,51 @@
       </svg>
     </div>
   </div>
+
+  <section id="panel">
+    <div class="wrap">
+      <div class="cabecera-seccion">
+        <span class="tema">El panel</span>
+        <h2>Conectas una vez y repartes con un botón.</h2>
+        <p>
+          Enchufas un servidor y aparece en la lista. A partir de ahí, decides con un clic
+          cuáles lleva cada dirección: una general con todo, y luego una por cada IA con lo
+          justo. Se guarda en tu archivo y el agente afectado lo ve al momento.
+        </p>
+      </div>
+
+      <div class="panel-muestra">
+        <div class="pm-col">
+          <span class="pm-tit">Servidores conectados</span>
+          <div class="pm-item"><i class="pm-pt"></i> correo <em>26 herramientas</em></div>
+          <div class="pm-item"><i class="pm-pt"></i> calendario <em>4 herramientas</em></div>
+          <div class="pm-item"><i class="pm-pt"></i> github <em>49 herramientas</em></div>
+          <div class="pm-item"><i class="pm-pt"></i> navegador <em>11 herramientas</em></div>
+          <div class="pm-add">+ conectar un servidor</div>
+        </div>
+        <div class="pm-col">
+          <span class="pm-tit">Tus direcciones MCP</span>
+          <div class="pm-dest">
+            <b>general</b> <em>lleva todo lo que haya</em>
+            <div class="pm-sw"><span class="on">✓ correo</span><span class="on">✓ calendario</span><span class="on">✓ github</span><span class="on">✓ navegador</span></div>
+          </div>
+          <div class="pm-dest">
+            <b>claude-ai</b> <em>lleva lo que elijas</em>
+            <div class="pm-sw"><span class="on">✓ correo</span><span class="on">✓ calendario</span><span>+ github</span><span>+ navegador</span></div>
+          </div>
+          <div class="pm-dest">
+            <b>codex</b> <em>lleva lo que elijas</em>
+            <div class="pm-sw"><span>+ correo</span><span>+ calendario</span><span class="on">✓ github</span><span>+ navegador</span></div>
+          </div>
+          <div class="pm-add">+ crear una dirección</div>
+        </div>
+      </div>
+      <p style="margin-top:1rem;color:var(--ink-3);font-size:0.88rem;text-align:center">
+        Lo que pulsas se escribe en tu archivo de configuración, con tus comentarios intactos.
+        Puedes seguir editándolo a mano.
+      </p>
+    </div>
+  </section>
 
   <section id="para-que">
     <div class="wrap">
