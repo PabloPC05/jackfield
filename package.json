@@ -1,0 +1,21 @@
+{
+  "name": "jackfield-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Jackfield: a declarative MCP gateway you can run anywhere",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc -b --force",
+    "test": "npm run build && node --test packages/core/test/ packages/executor/test/",
+    "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
+    "test:only": "node --test packages/core/test/ packages/executor/test/"
+  }
+}

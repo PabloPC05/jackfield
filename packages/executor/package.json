@@ -1,0 +1,27 @@
+{
+  "name": "@jackfield/executor",
+  "version": "0.1.0",
+  "description": "Jackfield executor: serves the upstreams a serverless core cannot host (stdio servers, local services)",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "jackfield-executor": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@jackfield/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,15 @@
+services:
+  jackfield:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "127.0.0.1:8790:8790"
+    volumes:
+      - ./jackfield.yaml:/etc/jackfield/jackfield.yaml:ro
+      - ./secrets:/etc/jackfield/secrets:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s

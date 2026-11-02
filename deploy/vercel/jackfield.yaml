@@ -1,0 +1,31 @@
+# Config for the serverless example. No secrets here: they come from project
+# environment variables, read with ${env:NAME}.
+
+server:
+  basePath: ""
+  logFormat: json
+  stateless: true
+
+executors:
+  # The machine that runs what a function cannot: child processes, a browser,
+  # anything that has to stay alive between calls.
+  home:
+    url: ${env:JACKFIELD_EXECUTOR_URL}
+    token: ${env:JACKFIELD_EXECUTOR_TOKEN}
+
+upstreams:
+  # A hosted MCP server: a function can reach this directly.
+  # example:
+  #   transport: http
+  #   url: https://example.com/mcp
+  #   token: ${env:EXAMPLE_TOKEN}
+
+  # Something that needs a process: served by the executor at home.
+  # browser:
+  #   transport: executor
+  #   executor: home
+
+clients:
+  agent:
+    key: ${env:JACKFIELD_KEY_AGENT}
+    upstreams: ["*"]

@@ -1,0 +1,51 @@
+/**
+ * Jackfield: a declarative MCP gateway you can run anywhere.
+ *
+ * One endpoint for every MCP server you use, one key per agent, and a file in
+ * git that says who sees what. The core is transport-agnostic: it answers Web
+ * `Request`s, so the same gateway runs as a long-lived process, in a
+ * container, or in a serverless function.
+ */
+export { configSchema, upstreamSchema, profileSchema, clientSchema, executorSchema } from './config/schema.js';
+export type {
+    Config,
+    RawConfig,
+    UpstreamConfig,
+    ProfileConfig,
+    ClientConfig,
+    ExecutorConfig,
+    ServerConfig,
+    Defaults,
+    PrefixMode
+} from './config/schema.js';
+export { loadConfig, parseConfig, resolvePlaceholders } from './config/load.js';
+export type { LoadedConfig, LoadOptions } from './config/load.js';
+
+export { Gateway } from './gateway/gateway.js';
+export type { GatewayOptions } from './gateway/gateway.js';
+export { GatewaySession, GATEWAY_INFO } from './gateway/session.js';
+export { buildCatalog, visibleTools } from './gateway/catalog.js';
+export type { Catalog, ExposedTool } from './gateway/catalog.js';
+export { resolveSelection, resolveUpstreamSelectors } from './gateway/selection.js';
+export type { Selection } from './gateway/selection.js';
+export { findTools, metaToolDefinitions, metaToolNames, FIND_TOOL, CALL_TOOL } from './gateway/toolsearch.js';
+
+export { UpstreamConnection } from './upstream/connection.js';
+export { UpstreamPool } from './upstream/pool.js';
+export type { CallContext, DownstreamBridge, UpstreamStatus, UpstreamState, UpstreamTool } from './upstream/types.js';
+
+export { Router } from './http/router.js';
+export type { RouterOptions } from './http/router.js';
+export { KeyRegistry, constantTimeEquals } from './http/auth.js';
+export type { Principal } from './http/auth.js';
+
+export { serve, toWebRequest, writeWebResponse } from './runtime/node.js';
+export type { ServeOptions, RunningServer } from './runtime/node.js';
+export { createWebHandler } from './runtime/web.js';
+export type { WebHandler, WebHandlerOptions } from './runtime/web.js';
+
+export { createLogger, nullLogger, registerSecret, redact } from './util/logger.js';
+export type { Logger, LogLevel } from './util/logger.js';
+export { ConfigError, HttpError, errorMessage } from './util/errors.js';
+export { Bm25Index, tokenize } from './util/bm25.js';
+export { matchesGlob, joinName, sanitizeSegment, isValidToolName, MAX_TOOL_NAME_LENGTH } from './util/names.js';

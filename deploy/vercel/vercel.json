@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/mcp.mjs": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 300,
+      "memory": 1024,
+      "includeFiles": "jackfield.yaml"
+    }
+  },
+  "rewrites": [
+    { "source": "/mcp", "destination": "/api/mcp" },
+    { "source": "/k/:key/mcp", "destination": "/api/mcp" }
+  ]
+}

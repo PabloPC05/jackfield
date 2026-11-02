@@ -1,0 +1,21 @@
+{
+  "name": "@jackfield/cli",
+  "version": "0.1.0",
+  "description": "Jackfield command line: serve, check, tools, keygen",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "jackfield": "./dist/bin.js"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@jackfield/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

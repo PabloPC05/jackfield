@@ -1,0 +1,40 @@
+# /etc/systemd/system/jackfield.service
+#
+#   useradd --system --home /var/lib/jackfield jackfield
+#   install -d -o jackfield -g jackfield -m 0750 /var/lib/jackfield /etc/jackfield
+#   systemctl enable --now jackfield
+
+[Unit]
+Description=Jackfield MCP gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jackfield
+Group=jackfield
+ExecStart=/usr/bin/env jackfield serve --config /etc/jackfield/jackfield.yaml
+Restart=on-failure
+RestartSec=2s
+
+# The gateway reads key files and talks to the network. It needs nothing else.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+StateDirectory=jackfield
+ReadOnlyPaths=/etc/jackfield
+
+# Uncomment if upstreams are stdio servers that need a writable home.
+# ReadWritePaths=/var/lib/jackfield
+
+[Install]
+WantedBy=multi-user.target

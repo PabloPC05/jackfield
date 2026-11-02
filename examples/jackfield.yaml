@@ -1,0 +1,70 @@
+# A working example. Nothing to install, no network: both upstreams are the
+# demo server in this folder, started as child processes.
+#
+#   jackfield check  -c examples/jackfield.yaml
+#   jackfield tools  -c examples/jackfield.yaml --by-source
+#   jackfield routes -c examples/jackfield.yaml
+#   jackfield serve  -c examples/jackfield.yaml
+
+server:
+  host: 127.0.0.1
+  port: 8790
+  logLevel: info
+
+defaults:
+  # Tool names arrive as <source>_<tool>: notes_echo, tasks_echo.
+  prefix: always
+
+upstreams:
+  notes:
+    description: pretend note taking
+    transport: stdio
+    command: node
+    args: ["examples/stdio-echo-server.mjs"]
+    env:
+      DEMO_NAME: notes
+    tags: [personal]
+
+  tasks:
+    description: pretend task tracking
+    transport: stdio
+    command: node
+    args: ["examples/stdio-echo-server.mjs"]
+    env:
+      DEMO_NAME: tasks
+    tags: [personal]
+    # This upstream's `now` is redundant with the other one's.
+    tools:
+      deny: ["now"]
+
+profiles:
+  # The small set every agent gets.
+  core:
+    description: what any agent of mine can use
+    upstreams: ["tag:personal"]
+    exclude: ["*.add"]
+
+  # Everything, for an agent that can take it.
+  full:
+    extends: [core]
+    upstreams: ["*"]
+    # `exclude` accumulates across layers, so *.add stays out. Deny always wins.
+
+clients:
+  laptop:
+    description: the agent I run on my machine
+    key: example-key-laptop-change-me-0001
+    profile: full
+
+  phone:
+    description: an agent that cannot send headers, so the key is in the URL
+    key: example-key-phone-change-me-00002
+    keyInPath: true
+    profile: core
+
+  thrifty:
+    description: a client that loads every definition, so it gets find_tool instead
+    key: example-key-thrifty-change-me-003
+    profile: full
+    expose: search
+    alwaysExpose: ["notes.echo"]
