@@ -53,10 +53,9 @@ dropped is the half that breaks real setups:
   `transport: cli` turns a service used twice a month into one tool instead of
   a hundred definitions you pay for every turn.
 - **Some calls should need a person.** `permissions` gives every tool `allow`,
-  `ask` or `deny`. `ask` puts the question to the user — as a form in their
-  client, or with `via: link` as a one-time URL sent to your notifier and to
-  nobody else, which is the only route that works when nobody is watching the
-  agent. The agent never sees the link, so it cannot approve itself.
+  `ask` or `deny`. `ask` puts the question to the user as a form in their own
+  client. (There is also an opt-in `via: link` for agents nobody is watching,
+  off unless you configure it — most setups do not need it.)
 - **One reply should not eat the context window.** Results over a limit are
   trimmed, with a note saying how much went and to ask for less. Descriptions
   and hints can be rewritten per tool without touching the server.

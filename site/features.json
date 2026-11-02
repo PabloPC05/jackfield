@@ -101,15 +101,6 @@
     "detail": "Y si el cliente no sabe preguntar, deniega en vez de pasar de largo."
   },
   {
-    "id": "movil",
-    "group": "mando",
-    "status": "done",
-    "star": true,
-    "title": "Apruebas desde el móvil, aunque no estés mirando",
-    "body": "El agente se queda esperando y a ti te llega un aviso con un enlace: ves qué va a hacer y con qué datos, y decides. El agente nunca ve ese enlace, así que no puede aprobarse solo.",
-    "detail": "De un solo uso, caduca, y puedes pedirle además una frase secreta."
-  },
-  {
     "id": "avisos",
     "group": "mando",
     "status": "done",
@@ -124,6 +115,14 @@
     "title": "Tus contraseñas se quedan aquí",
     "body": "Entras una vez en los servicios que usan OAuth y la pasarela mantiene la sesión viva sola. Ningún agente llega a ver un token.",
     "detail": "Guardados en tu máquina, en un archivo por servicio que solo tú puedes leer."
+  },
+  {
+    "id": "movil",
+    "group": "mando",
+    "status": "done",
+    "title": "Y si quieres, que te pregunte fuera del chat",
+    "body": "Opcional, y apagado salvo que lo montes: en vez de preguntarte dentro del agente, te manda un aviso con un enlace para decidir desde donde estés. Útil si dejas algún agente corriendo solo; innecesario si siempre estás delante.",
+    "detail": "No hace falta para nada de lo anterior."
   },
   {
     "id": "formularios",

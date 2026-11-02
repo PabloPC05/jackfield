@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jackfield — un solo enchufe para todos tus agentes</title>
-<meta name="description" content="Reúne todos tus servidores MCP detrás de una dirección por agente. Decides quién llega a qué en un archivo, apruebas desde el móvil lo que importa y nada se queda a medias por el camino.">
+<meta name="description" content="Reúne todos tus servidores MCP detrás de una dirección por agente. Conectas cada servidor una vez y repartes con un botón quién lleva qué, desde un panel.">
 <meta name="color-scheme" content="light dark">
 <meta property="og:title" content="Jackfield">
-<meta property="og:description" content="Un solo enchufe para todos tus agentes. Software libre.">
+<meta property="og:description" content="Un solo enchufe para todos tus agentes. Conectas una vez y repartes con un botón. Software libre.">
 <meta property="og:locale" content="es_ES">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Cg fill='none' stroke='%23000' stroke-width='2.4'%3E%3Ccircle cx='10' cy='11' r='3'/%3E%3Ccircle cx='22' cy='11' r='3'/%3E%3Ccircle cx='10' cy='22' r='3'/%3E%3Ccircle cx='22' cy='22' r='3'/%3E%3Cpath d='M10 14v5M13 22h6'/%3E%3C/g%3E%3C/svg%3E">
@@ -107,6 +107,37 @@
   .pm-sw span { font-size:0.82rem; border:1px solid var(--line-2); border-radius:999px;
     padding:0.18rem 0.6rem; color:var(--ink-3); }
   .pm-sw span.on { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+  .pm-sw button { font:inherit; font-size:0.82rem; border:1px solid var(--line-2); border-radius:999px;
+    padding:0.18rem 0.6rem; color:var(--ink-3); background:transparent; cursor:pointer; }
+  .pm-sw button:hover { border-color:var(--ink); color:var(--ink); }
+  .pm-sw button[aria-pressed="true"] { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+  button.pm-add { display:block; width:100%; font:inherit; font-size:0.85rem; color:var(--ink-3);
+    border:1px dashed var(--line-2); background:transparent; border-radius:7px; padding:0.5rem 0.7rem;
+    text-align:center; margin-top:0.3rem; cursor:pointer; }
+  button.pm-add:hover { border-color:var(--ink); color:var(--ink); }
+  .pm-item button { margin-left:auto; font:inherit; font-size:0.78rem; border:0; background:none;
+    color:var(--ink-3); cursor:pointer; padding:0; }
+  .pm-item button:hover { color:var(--ink); text-decoration:underline; }
+  .pm-item em + button { margin-left:0.7rem; }
+  .pm-conn { margin-top:0.7rem; border-top:1px solid var(--line); padding-top:0.6rem; }
+  .pm-provs { display:flex; flex-wrap:wrap; gap:0.3rem; }
+  .pm-provs button { font:inherit; font-size:0.78rem; border:1px solid var(--line-2); border-radius:5px;
+    padding:0.18rem 0.5rem; background:transparent; color:var(--ink-3); cursor:pointer; }
+  .pm-provs button[aria-pressed="true"] { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+  .pm-pegar { margin-top:0.5rem; }
+  .pm-pegar .donde { font-size:0.76rem; color:var(--ink-3); margin-bottom:0.3rem; }
+  .pm-pegar pre { margin:0; font-size:0.72rem; padding:0.55rem 0.65rem; white-space:pre-wrap;
+    word-break:break-all; background:var(--bg); }
+  .pm-pegar .copiar { margin-top:0.4rem; font:inherit; font-size:0.78rem; border:1px solid var(--ink);
+    background:var(--ink); color:var(--bg); border-radius:5px; padding:0.25rem 0.7rem; cursor:pointer; }
+  .pm-aviso { font-size:0.76rem; border-left:2px solid var(--ink); padding-left:0.5rem; margin-top:0.4rem;
+    color:var(--ink-2); }
+  .pm-nuevo { display:flex; gap:0.4rem; margin-top:0.5rem; }
+  .pm-nuevo input { flex:1; font:inherit; font-size:0.85rem; padding:0.35rem 0.5rem;
+    border:1px solid var(--line-2); border-radius:6px; background:var(--bg); color:var(--ink); }
+  .pm-nuevo button { font:inherit; font-size:0.85rem; border:1px solid var(--ink); background:var(--ink);
+    color:var(--bg); border-radius:6px; padding:0.35rem 0.8rem; cursor:pointer; }
+  .pm-pie { margin-top:0.9rem; color:var(--ink-3); font-size:0.85rem; text-align:center; }
 
   /* problema */
   .problemas { display:grid; grid-template-columns:repeat(auto-fit, minmax(265px,1fr)); gap:1rem; margin-top:2.2rem; }
@@ -194,8 +225,8 @@
     <h1>Un solo enchufe para todos tus agentes.</h1>
     <p class="entrada">
       Jackfield reúne todos tus servidores MCP detrás de una dirección por agente.
-      Conectas cada servidor una vez y repartes con un botón quién lleva qué,
-      apruebas desde el móvil lo que importa, y nada se queda colgado por el camino.
+      Conectas cada servidor una vez y repartes con un botón quién lleva qué.
+      Y nada se queda colgado por el camino.
     </p>
     <div class="acciones">
       <a class="btn" href="#panel">Ver el panel</a>
@@ -255,32 +286,19 @@
         </p>
       </div>
 
-      <div class="panel-muestra">
+      <div class="panel-muestra" id="demo">
         <div class="pm-col">
           <span class="pm-tit">Servidores conectados</span>
-          <div class="pm-item"><i class="pm-pt"></i> correo <em>26 herramientas</em></div>
-          <div class="pm-item"><i class="pm-pt"></i> calendario <em>4 herramientas</em></div>
-          <div class="pm-item"><i class="pm-pt"></i> github <em>49 herramientas</em></div>
-          <div class="pm-item"><i class="pm-pt"></i> navegador <em>11 herramientas</em></div>
-          <div class="pm-add">+ conectar un servidor</div>
+          <div id="demo-servidores"></div>
+          <button class="pm-add" id="demo-conectar" type="button">+ conectar un servidor</button>
         </div>
         <div class="pm-col">
           <span class="pm-tit">Tus direcciones MCP</span>
-          <div class="pm-dest">
-            <b>general</b> <em>lleva todo lo que haya</em>
-            <div class="pm-sw"><span class="on">✓ correo</span><span class="on">✓ calendario</span><span class="on">✓ github</span><span class="on">✓ navegador</span></div>
-          </div>
-          <div class="pm-dest">
-            <b>claude-ai</b> <em>lleva lo que elijas</em>
-            <div class="pm-sw"><span class="on">✓ correo</span><span class="on">✓ calendario</span><span>+ github</span><span>+ navegador</span></div>
-          </div>
-          <div class="pm-dest">
-            <b>codex</b> <em>lleva lo que elijas</em>
-            <div class="pm-sw"><span>+ correo</span><span>+ calendario</span><span class="on">✓ github</span><span>+ navegador</span></div>
-          </div>
-          <div class="pm-add">+ crear una dirección</div>
+          <div id="demo-destinos"></div>
+          <button class="pm-add" id="demo-crear" type="button">+ crear una dirección</button>
         </div>
       </div>
+      <p class="pm-pie">Esto funciona de verdad: toca los botones. Es el panel, con datos de mentira.</p>
       <p style="margin-top:1rem;color:var(--ink-3);font-size:0.88rem;text-align:center">
         Lo que pulsas se escribe en tu archivo de configuración, con tus comentarios intactos.
         Puedes seguir editándolo a mano.
@@ -485,6 +503,216 @@
 
 <script>
 const FUNCIONES = __FEATURES__;
+
+// --- la demo del panel: el mismo panel, con datos de mentira -------------
+const PROVEEDORES = __PROVEEDORES__;
+__FRAGMENTO__
+
+const demo = {
+  servidores: [
+    { id: 'correo', herramientas: 26 },
+    { id: 'calendario', herramientas: 4 },
+    { id: 'github', herramientas: 49 },
+    { id: 'navegador', herramientas: 11 }
+  ],
+  destinos: [
+    { id: 'general', modo: 'todo', fuera: [], lleva: [], clave: 'Hq7xK2mN9pR4tV6yB8dF1gJ3', enRuta: false, prov: 'claude-code' },
+    { id: 'claude-ai', modo: 'elegir', fuera: [], lleva: ['correo', 'calendario'], clave: 'Zx4cV7bN2mQ9wE5rT8yU1iO3', enRuta: true, prov: 'claude-ai' },
+    { id: 'codex', modo: 'elegir', fuera: [], lleva: ['github'], clave: 'Lp6kM3nB8vC5xZ2qW9eR4tY7', enRuta: false, prov: 'codex' }
+  ],
+  siguiente: 1
+};
+
+const BASE = 'https://mcp.tudominio.com';
+
+function llevaDemo(destino, servidor) {
+  return destino.modo === 'todo' ? !destino.fuera.includes(servidor) : destino.lleva.includes(servidor);
+}
+
+function alternaDemo(destino, servidor) {
+  if (destino.modo === 'todo') {
+    const i = destino.fuera.indexOf(servidor);
+    if (i === -1) destino.fuera.push(servidor); else destino.fuera.splice(i, 1);
+  } else {
+    const i = destino.lleva.indexOf(servidor);
+    if (i === -1) destino.lleva.push(servidor); else destino.lleva.splice(i, 1);
+  }
+  pintaDemo();
+}
+
+function copiaDemo(texto, boton) {
+  const antes = boton.textContent;
+  const fin = () => { boton.textContent = 'copiado'; setTimeout(() => { boton.textContent = antes; }, 1400); };
+  if (navigator.clipboard) navigator.clipboard.writeText(texto).then(fin, fin); else fin();
+}
+
+function pintaDemo() {
+  const izq = document.getElementById('demo-servidores');
+  if (!izq) return;
+  izq.replaceChildren();
+
+  for (const servidor of demo.servidores) {
+    const fila = document.createElement('div');
+    fila.className = 'pm-item';
+    const punto = document.createElement('i');
+    punto.className = 'pm-pt';
+    const nombre = document.createElement('span');
+    nombre.textContent = servidor.id;
+    const cuantas = document.createElement('em');
+    cuantas.textContent = servidor.herramientas + ' herramientas';
+    const quitar = document.createElement('button');
+    quitar.type = 'button';
+    quitar.textContent = 'quitar';
+    quitar.addEventListener('click', () => {
+      demo.servidores = demo.servidores.filter(s => s.id !== servidor.id);
+      for (const destino of demo.destinos) {
+        destino.lleva = destino.lleva.filter(s => s !== servidor.id);
+        destino.fuera = destino.fuera.filter(s => s !== servidor.id);
+      }
+      pintaDemo();
+    });
+    fila.append(punto, nombre, cuantas, quitar);
+    izq.append(fila);
+  }
+
+  const der = document.getElementById('demo-destinos');
+  der.replaceChildren();
+
+  for (const destino of demo.destinos) {
+    const caja = document.createElement('div');
+    caja.className = 'pm-dest';
+
+    const titulo = document.createElement('b');
+    titulo.textContent = destino.id;
+    const modo = document.createElement('em');
+    modo.textContent = destino.modo === 'todo' ? 'lleva todo lo que haya' : 'lleva lo que elijas';
+
+    const cuantas = demo.servidores.filter(s => llevaDemo(destino, s.id))
+      .reduce((suma, s) => suma + s.herramientas, 0);
+    const total = document.createElement('em');
+    total.textContent = '· ' + cuantas + ' herramientas';
+
+    const interruptores = document.createElement('div');
+    interruptores.className = 'pm-sw';
+    for (const servidor of demo.servidores) {
+      const encendido = llevaDemo(destino, servidor.id);
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.setAttribute('aria-pressed', String(encendido));
+      boton.textContent = (encendido ? '✓ ' : '+ ') + servidor.id;
+      boton.addEventListener('click', () => alternaDemo(destino, servidor.id));
+      interruptores.append(boton);
+    }
+    if (!demo.servidores.length) {
+      const vacio = document.createElement('em');
+      vacio.textContent = 'conecta un servidor y aparecerá su botón';
+      interruptores.append(vacio);
+    }
+
+    const conn = document.createElement('div');
+    conn.className = 'pm-conn';
+    const provs = document.createElement('div');
+    provs.className = 'pm-provs';
+    const pegar = document.createElement('div');
+    pegar.className = 'pm-pegar';
+
+    const conexion = {
+      label: destino.id,
+      url: destino.enRuta ? BASE + '/k/' + destino.clave + '/mcp' : BASE + '/mcp',
+      key: destino.clave,
+      keyInPath: destino.enRuta
+    };
+
+    function pintaPegar() {
+      const proveedor = PROVEEDORES.find(p => p.id === destino.prov);
+      const texto = fragmento(destino.prov, conexion);
+      pegar.replaceChildren();
+
+      const donde = document.createElement('div');
+      donde.className = 'donde';
+      donde.textContent = proveedor.where;
+      const pre = document.createElement('pre');
+      pre.textContent = texto;
+      const copiar = document.createElement('button');
+      copiar.type = 'button';
+      copiar.className = 'copiar';
+      copiar.textContent = 'copiar';
+      copiar.addEventListener('click', () => copiaDemo(texto, copiar));
+
+      pegar.append(donde, pre, copiar);
+
+      const aviso = avisoProveedor(destino.prov, conexion);
+      if (aviso) {
+        const p = document.createElement('p');
+        p.className = 'pm-aviso';
+        p.textContent = aviso;
+        pegar.append(p);
+      }
+    }
+
+    for (const proveedor of PROVEEDORES) {
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.textContent = proveedor.name;
+      boton.setAttribute('aria-pressed', String(proveedor.id === destino.prov));
+      boton.addEventListener('click', () => { destino.prov = proveedor.id; pintaDemo(); });
+      provs.append(boton);
+    }
+    pintaPegar();
+    conn.append(provs, pegar);
+
+    caja.append(titulo, modo, total, interruptores, conn);
+    der.append(caja);
+  }
+}
+
+document.getElementById('demo-conectar')?.addEventListener('click', () => {
+  const sugerencias = ['notas', 'archivos', 'tareas', 'overleaf', 'hevy', 'porkbun'];
+  const libre = sugerencias.find(nombre => !demo.servidores.some(s => s.id === nombre));
+  const nombre = (prompt('¿Cómo se llama el servidor?', libre || 'servidor' + demo.siguiente++) || '').trim();
+  if (!nombre) return;
+  if (demo.servidores.some(s => s.id === nombre)) { alert('Ya hay uno con ese nombre.'); return; }
+  demo.servidores.push({ id: nombre, herramientas: 3 + Math.floor(Math.random() * 20) });
+  pintaDemo();
+});
+
+document.getElementById('demo-crear')?.addEventListener('click', () => {
+  const caja = document.getElementById('demo-destinos');
+  if (document.getElementById('demo-nuevo')) return;
+
+  const fila = document.createElement('div');
+  fila.className = 'pm-nuevo';
+  fila.id = 'demo-nuevo';
+  const campo = document.createElement('input');
+  campo.placeholder = '¿cómo la llamas? por ejemplo: movil';
+  campo.setAttribute('aria-label', 'Nombre de la dirección');
+  const crear = document.createElement('button');
+  crear.type = 'button';
+  crear.textContent = 'crear';
+
+  const hazlo = () => {
+    const nombre = campo.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    if (!nombre) { campo.focus(); return; }
+    if (demo.destinos.some(d => d.id === nombre)) { alert('Ya hay una dirección con ese nombre.'); return; }
+    demo.destinos.push({
+      id: nombre, modo: 'elegir', fuera: [], lleva: [],
+      clave: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+      enRuta: false, prov: 'claude-code'
+    });
+    fila.remove();
+    pintaDemo();
+  };
+  crear.addEventListener('click', hazlo);
+  campo.addEventListener('keydown', evento => { if (evento.key === 'Enter') hazlo(); });
+
+  fila.append(campo, crear);
+  caja.append(fila);
+  campo.focus();
+});
+
+pintaDemo();
+
+
 
 const BLOQUES = [
   { id: 'control', titulo: 'Un sitio para todo' },

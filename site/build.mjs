@@ -23,8 +23,22 @@ const script = /<script>\n([\s\S]*?)<\/script>/.exec(template);
 if (!style?.[1] || !script?.[1]) throw new Error('could not find the style or script block in the template');
 
 const css = style[1];
-const js = script[1].replace('__FEATURES__', JSON.stringify(features));
-if (js.includes('__FEATURES__')) throw new Error('the features placeholder was not replaced');
+// Los proveedores y los fragmentos a copiar vienen del paquete, para que la
+// demo y el panel de verdad no se separen nunca.
+const { PROVIDERS, snippetFor, warningFor } = await import('../packages/core/dist/panel/providers.js');
+const ayudantes = [
+    snippetFor.toString().replace(/^function snippetFor/, 'function fragmento'),
+    warningFor.toString().replace(/^function warningFor/, 'function avisoProveedor')
+].join('\n\n');
+
+const js = script[1]
+    .replace('__FEATURES__', JSON.stringify(features))
+    .replace('__PROVEEDORES__', JSON.stringify(PROVIDERS))
+    .replace('__FRAGMENTO__', ayudantes);
+
+for (const marca of ['__FEATURES__', '__PROVEEDORES__', '__FRAGMENTO__']) {
+    if (js.includes(marca)) throw new Error(`no se sustituyó ${marca}`);
+}
 
 // Content-hashed names: the page can then be cached hard without anyone ever
 // seeing a new HTML against an old stylesheet, which is the classic way a

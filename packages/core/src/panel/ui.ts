@@ -1,3 +1,5 @@
+import { PROVIDERS, snippetFor, warningFor } from './providers.js';
+
 /**
  * The panel, as one page with no build step and no dependencies.
  *
@@ -57,6 +59,21 @@ const STYLE = String.raw`
     font-family:var(--mono); font-size:0.78rem; margin:0.8rem 0; display:flex; align-items:center; gap:0.5rem; }
   .url span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
 
+  .conectar { margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.8rem; }
+  .conectar .provs { display:flex; flex-wrap:wrap; gap:0.35rem; }
+  .prov { font:inherit; font-size:0.82rem; border:1px solid var(--line-2); background:transparent;
+    color:var(--ink-2); border-radius:6px; padding:0.25rem 0.6rem; cursor:pointer; }
+  .prov:hover { border-color:var(--ink); color:var(--ink); }
+  .prov[aria-pressed="true"] { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+  .pegar { margin-top:0.6rem; }
+  .pegar .donde { font-size:0.8rem; color:var(--ink-3); margin-bottom:0.35rem; }
+  .pegar pre { margin:0; background:var(--bg-2); border:1px solid var(--line); border-radius:6px;
+    padding:0.6rem 0.7rem; font-family:var(--mono); font-size:0.76rem; overflow-x:auto; white-space:pre-wrap;
+    word-break:break-all; }
+  .pegar .ojo { margin-top:0.45rem; display:flex; gap:0.5rem; align-items:center; }
+  .aviso-prov { font-size:0.8rem; color:var(--ink); border-left:2px solid var(--ink);
+    padding-left:0.6rem; margin-top:0.5rem; }
+
   .interruptores { display:flex; flex-wrap:wrap; gap:0.45rem; margin-top:0.6rem; }
   .sw { display:inline-flex; align-items:center; gap:0.45rem; border:1px solid var(--line-2);
     background:transparent; color:var(--ink-2); font:inherit; font-size:0.87rem; padding:0.35rem 0.7rem;
@@ -91,6 +108,8 @@ const STYLE = String.raw`
 
 const SCRIPT = String.raw`
 const $ = sel => document.querySelector(sel);
+const PROVEEDORES = __PROVEEDORES__;
+__FRAGMENTO__
 let estado = null;
 
 async function api(ruta, opciones) {
@@ -177,26 +196,74 @@ function pinta() {
       + ' · ' + destino.toolCount + ' herramientas';
     cabecera.append(titulo, sub);
 
-    const direccion = destino.urlWithKey || destino.url;
-    const caja_url = document.createElement('div');
-    caja_url.className = 'url';
-    const texto_url = document.createElement('span');
-    texto_url.textContent = direccion;
-    const copia = document.createElement('button');
-    copia.className = 'b';
-    copia.textContent = 'copiar';
-    copia.addEventListener('click', () => copiar(direccion, copia));
-    caja_url.append(texto_url, copia);
+    // Qué pegar, y dónde, para cada agente. Equivocarse de formato aquí es
+    // la forma más habitual de que una conexión falle antes de empezar.
+    const conectar = document.createElement('div');
+    conectar.className = 'conectar';
 
-    const caja_clave = document.createElement('div');
-    caja_clave.className = 'url';
-    const texto_clave = document.createElement('span');
-    texto_clave.textContent = destino.keyInPath ? 'la clave va dentro de la dirección' : 'Authorization: Bearer ' + (destino.key || '—');
-    const copia_clave = document.createElement('button');
-    copia_clave.className = 'b';
-    copia_clave.textContent = 'copiar';
-    copia_clave.addEventListener('click', () => copiar(destino.key || '', copia_clave));
-    caja_clave.append(texto_clave, copia_clave);
+    const provs = document.createElement('div');
+    provs.className = 'provs';
+    const pegar = document.createElement('div');
+    pegar.className = 'pegar';
+
+    // Si la clave va dentro de la dirección, la dirección ES la que lleva la
+    // clave, para todos los clientes: no hay cabecera que mandar.
+    const conexion = {
+      label: destino.id,
+      url: destino.keyInPath ? (destino.urlWithKey || destino.url) : destino.url,
+      key: destino.key,
+      keyInPath: destino.keyInPath
+    };
+
+    let elegido = destino.keyInPath ? 'claude-ai' : 'claude-code';
+
+    function pintaPegar() {
+      const proveedor = PROVEEDORES.find(p => p.id === elegido);
+      const texto = fragmento(elegido, conexion);
+
+      pegar.replaceChildren();
+
+      const donde = document.createElement('div');
+      donde.className = 'donde';
+      donde.textContent = proveedor.where;
+
+      const caja = document.createElement('pre');
+      caja.textContent = texto;
+
+      const fila = document.createElement('div');
+      fila.className = 'ojo';
+      const copia = document.createElement('button');
+      copia.className = 'b fuerte';
+      copia.textContent = 'copiar';
+      copia.addEventListener('click', () => copiar(texto, copia));
+      fila.append(copia);
+
+      pegar.append(donde, caja, fila);
+
+      const aviso = avisoProveedor(elegido, conexion);
+      if (aviso) {
+        const p = document.createElement('p');
+        p.className = 'aviso-prov';
+        p.textContent = aviso;
+        pegar.append(p);
+      }
+    }
+
+    for (const proveedor of PROVEEDORES) {
+      const boton = document.createElement('button');
+      boton.className = 'prov';
+      boton.type = 'button';
+      boton.textContent = proveedor.name;
+      boton.setAttribute('aria-pressed', String(proveedor.id === elegido));
+      boton.addEventListener('click', () => {
+        elegido = proveedor.id;
+        for (const otro of provs.children) otro.setAttribute('aria-pressed', String(otro.textContent === proveedor.name));
+        pintaPegar();
+      });
+      provs.append(boton);
+    }
+    pintaPegar();
+    conectar.append(provs, pegar);
 
     const interruptores = document.createElement('div');
     interruptores.className = 'interruptores';
@@ -269,7 +336,7 @@ function pinta() {
     });
 
     acciones.append(modo, ahorro, clave, borrar);
-    caja.append(cabecera, caja_url, caja_clave, interruptores, acciones);
+    caja.append(cabecera, interruptores, conectar, acciones);
     destinos.append(caja);
   }
 
@@ -357,6 +424,11 @@ for (const boton of document.querySelectorAll('[data-cerrar]')) {
 
 cargar().catch(error => alert(error.message));
 `;
+
+/** The snippet helpers, shipped to the browser as source. */
+function clientHelpers(): string {
+    return [snippetFor.toString().replace(/^function snippetFor/, 'function fragmento'), warningFor.toString().replace(/^function warningFor/, 'function avisoProveedor')].join('\n\n');
+}
 
 export function renderPanel(): string {
     return `<!DOCTYPE html>
@@ -457,6 +529,6 @@ export function renderPanel(): string {
   </form>
 </div></dialog>
 
-<script>${SCRIPT}</script>
+<script>${SCRIPT.replace('__PROVEEDORES__', JSON.stringify(PROVIDERS)).replace('__FRAGMENTO__', clientHelpers())}</script>
 </body></html>`;
 }
