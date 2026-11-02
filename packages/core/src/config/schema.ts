@@ -39,7 +39,44 @@ const upstreamCommon = {
             allow: z.array(toolGlob).optional(),
             deny: z.array(toolGlob).optional(),
             /** `{ "old_name": "new_name" }`, applied before prefixing. */
-            rename: z.record(z.string(), z.string()).optional()
+            rename: z.record(z.string(), z.string()).optional(),
+            /**
+             * Rewrite what the agent reads about a tool, without touching its
+             * server. Keyed by the name the upstream uses. Worth doing: the
+             * research on tool descriptions says concrete beats long, and a
+             * server's own wording is often neither.
+             */
+            override: z
+                .record(
+                    z.string(),
+                    z.object({
+                        title: z.string().max(200).optional(),
+                        description: z.string().max(4000).optional(),
+                        /** Merged over the upstream's own annotations. */
+                        annotations: z
+                            .object({
+                                title: z.string().optional(),
+                                readOnlyHint: z.boolean().optional(),
+                                destructiveHint: z.boolean().optional(),
+                                idempotentHint: z.boolean().optional(),
+                                openWorldHint: z.boolean().optional()
+                            })
+                            .optional()
+                    })
+                )
+                .optional()
+        })
+        .optional(),
+    /** Response limits for this upstream. Overrides `defaults.limits`. */
+    limits: z
+        .object({
+            /**
+             * Largest tool result passed through, in bytes of JSON. Over it,
+             * text is trimmed and the agent is told how much was cut — a
+             * truncated answer it knows about beats a context window spent on
+             * one reply.
+             */
+            maxResponseBytes: z.number().int().positive().optional()
         })
         .optional(),
     /** Free-form labels, usable in profile selectors as `tag:name`. */
@@ -106,12 +143,71 @@ const executorUpstream = z.object({
     ...upstreamCommon
 });
 
-export const upstreamSchema = z.discriminatedUnion('transport', [httpUpstream, sseUpstream, stdioUpstream, executorUpstream]);
+const cliCommandSchema = z.object({
+    /** What the agent is told this command is for. Include a real example. */
+    description: z.string().min(1).max(2000),
+    /** The program to run. Resolved on PATH; never passed to a shell. */
+    executable: z.string().min(1),
+    /** Arguments always placed before the agent's. */
+    prefixArgs: z.array(z.string()).default([]),
+    /**
+     * If set, the agent's first argument must be one of these. The cheapest
+     * way to turn "a CLI" into "these operations of a CLI".
+     */
+    allowedSubcommands: z.array(z.string()).optional(),
+    /** Arguments refused anywhere in the call, matched literally. */
+    deniedArgs: z.array(z.string()).default([]),
+    /** Most arguments the agent may pass. */
+    maxArgs: z.number().int().positive().max(200).default(40),
+    cwd: z.string().optional(),
+    env: z.record(z.string(), z.string()).optional()
+});
+
+const cliUpstream = z.object({
+    /**
+     * A built-in MCP server that exposes a few command-line programs as tools.
+     *
+     * The point is token cost: a service whose MCP server defines 120 tools,
+     * used twice a month, costs its definitions in every prompt. One `cli`
+     * tool with the service's own command line behind it costs one.
+     */
+    transport: z.literal('cli'),
+    commands: z.record(identifier, cliCommandSchema),
+    /** Per-command time limit. A command that outlives it is killed. */
+    commandTimeoutMs: z.number().int().positive().max(600_000).default(60_000),
+    /** Output kept per stream; the rest is cut with a note. */
+    maxOutputBytes: z.number().int().positive().default(100_000),
+    ...upstreamCommon
+});
+
+export const upstreamSchema = z.discriminatedUnion('transport', [
+    httpUpstream,
+    sseUpstream,
+    stdioUpstream,
+    executorUpstream,
+    cliUpstream
+]);
 
 export const executorSchema = z.object({
     url: z.string().url(),
     token: z.string().min(1),
     description: z.string().max(500).optional()
+});
+
+/**
+ * What to do before a tool runs.
+ *
+ * `ask` is the interesting one: the gateway puts the question to the agent's
+ * own user through an MCP form, and a client that cannot show forms is denied
+ * rather than waved through. An approval the agent can grant itself is not an
+ * approval.
+ */
+export const permissionRuleSchema = z.object({
+    /** Tool globs this rule covers: `upstream.tool`, `upstream.*`, `*`. */
+    tools: z.array(toolGlob).min(1),
+    action: z.enum(['allow', 'ask', 'deny']),
+    /** Shown to the user when asking, and to the agent when denying. */
+    reason: z.string().max(500).optional()
 });
 
 /** Selection shared by profiles and clients. */
@@ -133,7 +229,9 @@ const selectionSchema = {
     /** Overrides the prefix mode for this selection. */
     prefix: prefixMode.optional(),
     /** Extra text prepended to the gateway instructions. */
-    instructions: z.string().max(8000).optional()
+    instructions: z.string().max(8000).optional(),
+    /** Permission rules, checked before the global ones. First match wins. */
+    permissions: z.array(permissionRuleSchema).optional()
 };
 
 export const profileSchema = z.object({
@@ -211,6 +309,10 @@ export const configSchema = z.object({
             failOpen: z.boolean().default(true),
             /** Time allowed for an upstream to come up before it is skipped. */
             startupTimeoutMs: z.number().int().positive().default(20_000),
+            /** Response limits, overridable per upstream. */
+            limits: z
+                .object({ maxResponseBytes: z.number().int().positive().default(400_000) })
+                .default({ maxResponseBytes: 400_000 }),
             expose: z.enum(['all', 'search']).default('all'),
             /**
              * How long an aggregated tool catalog is reused before it is read
@@ -220,6 +322,27 @@ export const configSchema = z.object({
             catalogTtlMs: z.number().int().positive().default(300_000)
         })
         .default({}),
+
+    /**
+     * Where to send a line when something sensitive happens. Fire-and-forget:
+     * a notifier that is down never blocks a call.
+     */
+    notify: z
+        .object({
+            kind: z.enum(['ntfy', 'webhook']).default('ntfy'),
+            url: z.string().url(),
+            token: z.string().optional(),
+            /** Which tools count as sensitive. */
+            tools: z.array(toolGlob).default([]),
+            /** Which events to send. */
+            events: z.array(z.enum(['call', 'result', 'asked', 'denied', 'error'])).default(['call', 'denied', 'error']),
+            /** Prefix for the notification title. */
+            title: z.string().max(80).default('jackfield')
+        })
+        .optional(),
+
+    /** Permission rules applied to every client, after its own. */
+    permissions: z.array(permissionRuleSchema).default([]),
 
     executors: z.record(identifier, executorSchema).default({}),
     upstreams: z.record(identifier, upstreamSchema).default({}),
@@ -233,6 +356,9 @@ export type UpstreamConfig = z.output<typeof upstreamSchema>;
 export type ExecutorConfig = z.output<typeof executorSchema>;
 export type ProfileConfig = z.output<typeof profileSchema>;
 export type ClientConfig = z.output<typeof clientSchema>;
+export type PermissionRule = z.output<typeof permissionRuleSchema>;
+export type NotifyConfig = NonNullable<Config['notify']>;
+export type CliCommandConfig = z.output<typeof cliCommandSchema>;
 export type ServerConfig = Config['server'];
 export type Defaults = Config['defaults'];
 export type { PrefixMode } from '../util/names.js';

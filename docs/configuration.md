@@ -46,6 +46,7 @@ serving a gateway that cannot authenticate.
 | `separator` | `_` | Between prefix and tool name. |
 | `failOpen` | `true` | An unreachable upstream is skipped, not fatal. |
 | `startupTimeoutMs` | `20000` | How long an upstream gets to come up. |
+| `limits.maxResponseBytes` | `400000` | Largest tool result passed through, before trimming. |
 | `expose` | `all` | `all` or `search`. |
 | `catalogTtlMs` | `300000` | How long an aggregated catalogue is reused. |
 
@@ -76,6 +77,8 @@ Every upstream shares these keys:
 | `tools.allow` | Globs kept, before any client sees them. |
 | `tools.deny` | Globs removed. Deny wins. |
 | `tools.rename` | `{ old: new }`, applied before prefixing. |
+| `tools.override` | Rewrite a tool's `title`, `description` and `annotations`. Keyed by the upstream's own name, so it survives a rename. |
+| `limits.maxResponseBytes` | Largest result passed through, for this upstream. |
 | `instructions` | `keep` (default) merges the server's own instructions, `drop` discards them. Dropping is often right: instructions are tokens every turn. |
 | `forward` | `{ tools, resources, prompts }`. Tools only by default. |
 
@@ -116,6 +119,44 @@ upstreams:
 With `inheritEnv: true` the gateway's environment is passed through, minus
 variables whose names look like credentials.
 
+### `transport: cli`
+
+A built-in MCP server that turns a few command-line programs into tools.
+
+```yaml
+upstreams:
+  ops:
+    transport: cli
+    commandTimeoutMs: 60000
+    maxOutputBytes: 100000
+    commands:
+      coolify:
+        description: "Coolify CLI. Ask it for --help first."
+        executable: coolify
+        prefixArgs: ["--no-color"]
+        allowedSubcommands: ["list", "deploy", "logs"]
+        deniedArgs: ["--token"]
+        maxArgs: 20
+        cwd: /var/lib/jackfield
+        env:
+          COOLIFY_TOKEN: ${file:secrets/coolify.token}
+```
+
+The point is token cost: a service whose MCP server defines 120 tools, used
+twice a month, pays for those definitions in every prompt; its command line
+pays for one. The safety is structural rather than filtered —
+
+- **no shell, ever.** The program is spawned with an argument array, so `;`,
+  backticks and `$(…)` mean nothing to anything;
+- the **executable is fixed in the config**: the agent chooses arguments,
+  never the program;
+- `allowedSubcommands` turns "a CLI" into "these operations of a CLI";
+- `deniedArgs`, `maxArgs`, `commandTimeoutMs` and `maxOutputBytes` bound the
+  rest.
+
+A non-zero exit, a missing program or a kill after the time limit all come
+back as a tool error the agent can read, never as a crash.
+
 ### `transport: executor`
 
 ```yaml
@@ -130,6 +171,63 @@ upstreams:
     executor: home
     remote: browser          # id on the executor; defaults to this upstream's id
 ```
+
+## `permissions`
+
+What to do before a tool runs. Within a list, the first matching rule wins.
+
+```yaml
+permissions:                       # the floor for every client
+  - tools: ["*.delete_*", "github.merge_*"]
+    action: ask
+    reason: it changes something that is hard to put back
+  - tools: ["shell.*"]
+    action: deny
+
+clients:
+  laptop:
+    permissions:                   # this client's own rules
+      - tools: ["notes.*"]
+        action: allow
+```
+
+`allow`, `ask`, `deny`. The client's rules and the global ones are both
+evaluated, and **the stricter answer wins** — the global list is a floor, not a
+default, so a client can tighten and never loosen.
+
+`ask` puts the question to the user through an MCP elicitation form before the
+call runs, with the tool name and its arguments. A client that cannot show
+forms is **denied**, not waved through: an approval the agent grants itself is
+not an approval, and the refusal says what the client would need so the cause
+is visible.
+
+In `stateless` mode there is no way to ask, so `ask` behaves as `deny`.
+
+## `notify`
+
+Where to send a line when something sensitive happens.
+
+```yaml
+notify:
+  kind: ntfy                       # or webhook
+  url: https://ntfy.example.com/my-topic
+  token: ${file:secrets/ntfy.token}
+  tools: ["*.delete_*", "shell.*"]  # what counts as sensitive
+  events: [call, result, asked, denied, error]
+  title: jackfield
+```
+
+Fire and forget by design: a notifier that is slow or down never delays or
+fails a tool call. The point is that you find out an agent deleted something,
+not that the gateway stops working when ntfy is unreachable.
+
+| Event | When |
+| --- | --- |
+| `call` | a watched tool is about to run |
+| `result` | it finished |
+| `asked` | the user approved an `ask` rule |
+| `denied` | a rule refused it, or the user declined |
+| `error` | the upstream failed |
 
 ## `profiles`
 
@@ -160,6 +258,7 @@ A client is the specific half: who it is, and its key.
 | `profile` | A profile to build on. |
 | `enabled` | `false` refuses it. |
 | `upstreams`, `include`, `exclude`, `expose`, `alwaysExpose`, `prefix`, `instructions` | Overrides. |
+| `permissions` | This client's own rules, combined with the global ones by taking the stricter answer. |
 
 ### How layers merge
 
@@ -182,6 +281,21 @@ clients that fetch definitions on demand are better off with `all`.
 
 Tools stay callable by name in `search` mode — an agent that remembers a name
 from earlier in a conversation should not be punished for it.
+
+## Response limits
+
+A result over `limits.maxResponseBytes` is trimmed rather than passed on: text
+blocks are cut largest-first, whole blocks are dropped from the end if that is
+not enough, and the agent is told how much went and what to do instead —
+
+```
+[trimmed by the gateway: 184302 more characters.
+ Ask for a narrower result, a page, or a filter.]
+```
+
+A single reply that fills the context window is worse than a trimmed one: the
+agent loses the conversation either way, and with a trim it at least knows
+what happened.
 
 ## Endpoints
 

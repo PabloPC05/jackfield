@@ -10,6 +10,9 @@ export { configSchema, upstreamSchema, profileSchema, clientSchema, executorSche
 export type {
     Config,
     RawConfig,
+    PermissionRule,
+    NotifyConfig,
+    CliCommandConfig,
     UpstreamConfig,
     ProfileConfig,
     ClientConfig,
@@ -27,6 +30,10 @@ export { GatewaySession, GATEWAY_INFO } from './gateway/session.js';
 export { buildCatalog, visibleTools } from './gateway/catalog.js';
 export type { Catalog, ExposedTool } from './gateway/catalog.js';
 export { resolveSelection, resolveUpstreamSelectors } from './gateway/selection.js';
+export { decide, decideLayered, describeCall } from './gateway/permissions.js';
+export type { PermissionAction, PermissionDecision } from './gateway/permissions.js';
+export { Notifier } from './gateway/notify.js';
+export type { NotifyEvent, NotifyPayload } from './gateway/notify.js';
 export type { Selection } from './gateway/selection.js';
 export { findTools, metaToolDefinitions, metaToolNames, FIND_TOOL, CALL_TOOL } from './gateway/toolsearch.js';
 
@@ -48,4 +55,6 @@ export { createLogger, nullLogger, registerSecret, redact } from './util/logger.
 export type { Logger, LogLevel } from './util/logger.js';
 export { ConfigError, HttpError, errorMessage } from './util/errors.js';
 export { Bm25Index, tokenize } from './util/bm25.js';
+export { trimResult } from './util/trim.js';
+export { createCliServer } from './builtin/cli-server.js';
 export { matchesGlob, joinName, sanitizeSegment, isValidToolName, MAX_TOOL_NAME_LENGTH } from './util/names.js';

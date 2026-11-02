@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jackfield — one MCP endpoint for every agent you use</title>
+<meta name="description" content="A declarative MCP gateway you can run anywhere: one endpoint per agent, one file in git that says who reaches what, and none of the protocol quietly dropped on the way through.">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Jackfield">
+<meta property="og:description" content="One MCP endpoint for every agent you use. Open source, MIT.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090a0e'/%3E%3Cg fill='none' stroke='%23ff2b3d' stroke-width='2.2'%3E%3Ccircle cx='10' cy='11' r='3'/%3E%3Ccircle cx='22' cy='11' r='3'/%3E%3Ccircle cx='10' cy='22' r='3'/%3E%3Ccircle cx='22' cy='22' r='3'/%3E%3C/g%3E%3Cpath d='M10 14v5M13 22h6' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #07070a;
+    --bg-2: #0c0d12;
+    --ink: #f4f4f6;
+    --ink-dim: #a7a8b3;
+    --ink-faint: #6d6e7a;
+    --red: #ff2b3d;
+    --red-dim: #c71f2e;
+    --line: rgba(255, 255, 255, 0.1);
+    --glass: rgba(255, 255, 255, 0.045);
+    --glass-2: rgba(255, 255, 255, 0.07);
+    --radius: 16px;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(255, 43, 61, 0.17), transparent 60%),
+      radial-gradient(700px 420px at 92% 4%, rgba(255, 255, 255, 0.07), transparent 62%),
+      radial-gradient(1000px 700px at 50% 108%, rgba(255, 43, 61, 0.07), transparent 65%);
+  }
+  a { color: var(--ink); text-decoration-color: rgba(255, 43, 61, 0.55); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--red); }
+  code, kbd { font-family: var(--mono); font-size: 0.92em; }
+  :focus-visible { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 4px; }
+
+  .wrap { width: min(1120px, 100% - 2.5rem); margin-inline: auto; }
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+
+  /* header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    border-bottom: 1px solid var(--line);
+    background: rgba(7, 7, 10, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .top-in { display: flex; align-items: center; gap: 1.25rem; padding: 0.85rem 0; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 650; letter-spacing: -0.02em; font-size: 1.05rem; text-decoration: none; }
+  .brand svg { display: block; }
+  .top nav { margin-left: auto; display: flex; gap: 1.15rem; font-size: 0.9rem; }
+  .top nav a { color: var(--ink-dim); text-decoration: none; }
+  .top nav a:hover { color: var(--ink); }
+  @media (max-width: 760px) { .top nav a.hide-sm { display: none; } }
+
+  /* hero */
+  .hero { padding: 5.5rem 0 3rem; }
+  .tagline { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-dim); border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.8rem; background: var(--glass); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); }
+  h1 { font-size: clamp(2.5rem, 6.4vw, 4.4rem); line-height: 1.02; letter-spacing: -0.035em; margin: 1.3rem 0 0; font-weight: 700; }
+  h1 .red { color: var(--red); }
+  .lede { font-size: clamp(1.05rem, 2.1vw, 1.3rem); color: var(--ink-dim); max-width: 62ch; margin: 1.2rem 0 0; }
+  .cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 2rem; }
+  .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.15rem; border-radius: 11px; font-weight: 560; font-size: 0.95rem; text-decoration: none; border: 1px solid var(--line); background: var(--glass-2); transition: transform 0.14s ease, background 0.14s ease; }
+  .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.primary:hover { background: #ff4253; }
+
+  .patch { margin-top: 3rem; padding: 1.3rem 1.2rem; }
+  .diagram { display: block; width: 100%; height: auto; }
+  .d-label text { font-family: var(--sans); font-size: 15px; fill: var(--ink-dim); }
+  .d-right text { text-anchor: end; }
+  .d-strong { fill: var(--ink); font-weight: 600; }
+  .d-line path { fill: none; stroke: rgba(255,255,255,0.3); stroke-width: 1.4; }
+  .d-line path.d-accent { stroke: var(--red); stroke-width: 2; }
+  .d-box rect { fill: rgba(255,43,61,0.1); stroke: var(--red); stroke-width: 1.6; }
+  .d-box text { text-anchor: middle; font-family: var(--sans); }
+  .d-name { font-size: 20px; font-weight: 680; fill: var(--ink); letter-spacing: -0.02em; }
+  .d-sub { font-size: 12.5px; fill: var(--ink-dim); }
+  @media (max-width: 620px) { .d-label text { font-size: 19px; } .d-sub { font-size: 15px; } }
+
+  /* sections */
+  section { padding: 4.2rem 0; }
+  .eyebrow { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); font-weight: 650; }
+  h2 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); letter-spacing: -0.025em; line-height: 1.15; margin: 0.6rem 0 0; font-weight: 680; }
+  .sub { color: var(--ink-dim); max-width: 68ch; margin-top: 0.85rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 2.2rem; }
+  .stat { padding: 1.3rem 1.4rem; }
+  .stat .n { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; font-family: var(--mono); }
+  .stat .n.red { color: var(--red); }
+  .stat .l { color: var(--ink-dim); font-size: 0.88rem; margin-top: 0.35rem; }
+
+  /* feature explorer */
+  .controls { position: sticky; top: 57px; z-index: 40; margin-top: 2rem; padding: 0.85rem 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; background: rgba(10,10,14,0.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--ink-dim); font: inherit; font-size: 0.84rem; padding: 0.34rem 0.75rem; border-radius: 999px; cursor: pointer; transition: all 0.13s ease; }
+  .chip:hover { color: var(--ink); border-color: rgba(255,255,255,0.26); }
+  .chip[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; }
+  .sep { width: 1px; height: 22px; background: var(--line); margin-inline: 0.3rem; }
+  .search { flex: 1 1 190px; min-width: 150px; }
+  .search input { width: 100%; font: inherit; font-size: 0.88rem; color: var(--ink); background: rgba(255,255,255,0.055); border: 1px solid var(--line); border-radius: 9px; padding: 0.42rem 0.7rem; }
+  .search input::placeholder { color: var(--ink-faint); }
+  .count { font-size: 0.82rem; color: var(--ink-faint); font-family: var(--mono); white-space: nowrap; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(324px, 1fr)); gap: 1rem; margin-top: 1.2rem; }
+  .card { padding: 1.35rem 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .card h3 { margin: 0; font-size: 1.04rem; letter-spacing: -0.015em; line-height: 1.32; font-weight: 620; }
+  .card p { margin: 0; color: var(--ink-dim); font-size: 0.92rem; }
+  .card code { background: rgba(255,255,255,0.08); padding: 0.08em 0.36em; border-radius: 4px; color: var(--ink); }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+  .pill { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 650; padding: 0.2rem 0.5rem; border-radius: 5px; border: 1px solid; }
+  .pill.done { color: #5ae08a; border-color: rgba(90,224,138,0.4); background: rgba(90,224,138,0.1); }
+  .pill.partial { color: #ffc34d; border-color: rgba(255,195,77,0.4); background: rgba(255,195,77,0.1); }
+  .pill.planned { color: var(--ink-faint); border-color: var(--line); }
+  .star { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 650; color: var(--red); border: 1px solid rgba(255,43,61,0.45); background: rgba(255,43,61,0.1); padding: 0.2rem 0.5rem; border-radius: 5px; }
+  .detail { margin-top: auto; font-family: var(--mono); font-size: 0.76rem; color: var(--ink-faint); }
+  .empty { padding: 2.5rem; text-align: center; color: var(--ink-dim); }
+
+  /* code */
+  pre.code { margin: 1.6rem 0 0; padding: 1.3rem 1.4rem; overflow-x: auto; font-family: var(--mono); font-size: 0.84rem; line-height: 1.7; color: var(--ink); background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); }
+  pre.code .c { color: var(--ink-faint); }
+  pre.code .k { color: #8fb8ff; }
+  pre.code .s { color: #ffb4bb; }
+  pre.code .v { color: #c8f5a0; }
+
+  /* table */
+  .tablewrap { margin-top: 1.8rem; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.8rem 1rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 650; background: rgba(255,255,255,0.03); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td strong { font-weight: 600; }
+  .yes { color: #5ae08a; } .no { color: var(--ink-faint); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: 1.8rem; }
+  .note { padding: 1.3rem 1.4rem; }
+  .note h3 { margin: 0 0 0.5rem; font-size: 1rem; font-weight: 620; }
+  .note p { margin: 0; color: var(--ink-dim); font-size: 0.92rem; }
+
+  footer { border-top: 1px solid var(--line); padding: 2.6rem 0 3.4rem; color: var(--ink-faint); font-size: 0.88rem; }
+  footer .fin { display: flex; flex-wrap: wrap; gap: 1.4rem; align-items: baseline; justify-content: space-between; }
+  .honest { border-left: 2px solid var(--red); padding-left: 1rem; margin-top: 1.6rem; color: var(--ink-dim); max-width: 70ch; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#top">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+        <g fill="none" stroke="#ff2b3d" stroke-width="2.4"><circle cx="10" cy="11" r="3"/><circle cx="22" cy="11" r="3"/><circle cx="10" cy="22" r="3"/><circle cx="22" cy="22" r="3"/></g>
+        <path d="M10 14v5M13 22h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Jackfield
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#config" class="hide-sm">Config</a>
+      <a href="#run">Run it</a>
+      <a href="#compare" class="hide-sm">Compare</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <span class="tagline"><span class="dot"></span> Open source · MIT · early</span>
+    <h1>One MCP endpoint<br>for <span class="red">every agent</span> you use.</h1>
+    <p class="lede">
+      Plug your MCP servers in once. Hand each agent a URL and a key. A single file in git
+      decides who reaches what — and none of the protocol gets quietly dropped on the way through.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#features">See every feature</a>
+      <a class="btn" href="#quickstart">Quickstart</a>
+      <a class="btn" href="#honest">What it is not</a>
+    </div>
+
+    <div class="patch glass">
+      <svg viewBox="0 0 920 280" role="img" aria-labelledby="diagram-title" class="diagram">
+        <title id="diagram-title">Four agents connect to one Jackfield endpoint, which reaches hosted MCP servers, local ones, and an executor on your own machine.</title>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#ff2b3d"/>
+          </marker>
+        </defs>
+
+        <g class="d-label d-right">
+          <text x="150" y="56">Claude Code</text>
+          <text x="150" y="104">claude.ai</text>
+          <text x="150" y="152">Codex</text>
+          <text x="150" y="200">your own app</text>
+        </g>
+
+        <g class="d-line">
+          <path d="M162 51 H206 V128"/>
+          <path d="M162 99 H206"/>
+          <path d="M162 147 H206"/>
+          <path d="M162 195 H206 V128"/>
+          <path d="M206 128 H300" marker-end="url(#arrow)" class="d-accent"/>
+        </g>
+
+        <g class="d-box">
+          <rect x="308" y="86" width="196" height="86" rx="14"/>
+          <text x="406" y="120" class="d-name">Jackfield</text>
+          <text x="406" y="146" class="d-sub">one key per agent</text>
+        </g>
+
+        <g class="d-line">
+          <path d="M504 128 H600" marker-end="url(#arrow)" class="d-accent"/>
+          <path d="M600 128 V36 H646"/>
+          <path d="M600 128 V84 H646"/>
+          <path d="M600 128 H646"/>
+          <path d="M600 128 V172 H646"/>
+          <path d="M600 128 V220 H646"/>
+        </g>
+
+        <g class="d-label">
+          <text x="658" y="41"><tspan class="d-strong">github</tspan>, hosted servers</text>
+          <text x="658" y="89"><tspan class="d-strong">mail, calendar, files</tspan></text>
+          <text x="658" y="133"><tspan class="d-strong">a browser</tspan> (needs a process)</text>
+          <text x="658" y="177"><tspan class="d-strong">anything stdio</tspan></text>
+          <text x="658" y="225"><tspan class="d-strong">an executor</tspan> on your machine</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <span class="eyebrow">The problem</span>
+      <h2>Gateways forward the easy half.</h2>
+      <p class="sub">
+        Aggregating <code>tools/list</code> and <code>tools/call</code> is the part everyone does. The
+        other half — a server asking the agent a question, a call that takes ten minutes, a session
+        that has to survive a restart — is the part that breaks real setups. And nobody shows you
+        what the whole thing costs per turn.
+      </p>
+      <div class="stats">
+        <div class="stat glass"><div class="n red">505</div><div class="l">tools behind one real gateway, before anyone trimmed anything</div></div>
+        <div class="stat glass"><div class="n">713 KB</div><div class="l">of tool definitions — about 180,000 tokens, in every prompt</div></div>
+        <div class="stat glass"><div class="n">~60%</div><div class="l">of that weight from three services used a couple of times a month</div></div>
+        <div class="stat glass"><div class="n">2</div><div class="l">tools a client sees in <code>search</code> mode instead</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <span class="eyebrow">Everything it does</span>
+      <h2>All the features, with what is actually built.</h2>
+      <p class="sub">
+        Filter, or search. <span class="star">Rare</span> marks the things no other gateway
+        appears to combine. Nothing here is marked done unless there is a test for it.
+      </p>
+
+      <div class="controls glass" role="group" aria-label="Filter features">
+        <div class="chips" id="groups"></div>
+        <div class="sep" aria-hidden="true"></div>
+        <div class="chips" id="statuses"></div>
+        <div class="sep" aria-hidden="true"></div>
+        <div class="search"><label class="sr" for="q" hidden>Search features</label>
+          <input id="q" type="search" placeholder="Search features…" autocomplete="off"></div>
+        <span class="count" id="count" aria-live="polite"></span>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <div class="empty glass" id="empty" hidden>Nothing matches that. <button class="chip" id="reset">Clear filters</button></div>
+    </div>
+  </section>
+
+  <section id="config">
+    <div class="wrap">
+      <span class="eyebrow">Configuration</span>
+      <h2>One file. Secrets referenced, never embedded.</h2>
+      <p class="sub">
+        No database and no panel writing state behind your back. Anything resolved from
+        <code>${env:…}</code> or <code>${file:…}</code> is registered for redaction, so it cannot
+        reach a log line even by accident.
+      </p>
+<pre class="code"><span class="c"># jackfield.yaml — the whole gateway</span>
+<span class="k">upstreams</span>:
+  <span class="k">github</span>:
+    <span class="k">transport</span>: <span class="v">http</span>
+    <span class="k">url</span>: <span class="s">https://example.com/mcp</span>
+    <span class="k">token</span>: <span class="s">${file:/etc/jackfield/secrets/github.token}</span>
+
+  <span class="k">notes</span>:
+    <span class="k">transport</span>: <span class="v">stdio</span>              <span class="c"># a child process</span>
+    <span class="k">command</span>: <span class="s">npx</span>
+    <span class="k">args</span>: [<span class="s">"-y"</span>, <span class="s">"some-mcp-server"</span>]
+
+  <span class="k">porkbun</span>:
+    <span class="k">transport</span>: <span class="v">cli</span>                <span class="c"># 120 tools → 1</span>
+    <span class="k">commands</span>:
+      <span class="k">porkbun</span>:
+        <span class="k">description</span>: <span class="s">"Porkbun CLI. Ask it for --help first."</span>
+        <span class="k">executable</span>: <span class="s">porkbun</span>
+        <span class="k">allowedSubcommands</span>: [<span class="s">"domain"</span>, <span class="s">"dns"</span>]
+
+  <span class="k">browser</span>:
+    <span class="k">transport</span>: <span class="v">executor</span>           <span class="c"># on a machine of yours</span>
+    <span class="k">executor</span>: <span class="v">home</span>
+
+<span class="k">permissions</span>:                     <span class="c"># a floor every client inherits</span>
+  - <span class="k">tools</span>: [<span class="s">"*.delete_*"</span>]
+    <span class="k">action</span>: <span class="v">ask</span>                  <span class="c"># asks the user, through an MCP form</span>
+
+<span class="k">profiles</span>:
+  <span class="k">core</span>:  { <span class="k">upstreams</span>: [<span class="s">"tag:personal"</span>] }
+  <span class="k">full</span>:  { <span class="k">extends</span>: [<span class="v">core</span>], <span class="k">upstreams</span>: [<span class="s">"*"</span>] }
+
+<span class="k">clients</span>:
+  <span class="k">laptop</span>:
+    <span class="k">key</span>: <span class="s">${file:/etc/jackfield/secrets/key-laptop}</span>
+    <span class="k">profile</span>: <span class="v">full</span>
+
+  <span class="k">web-agent</span>:
+    <span class="k">key</span>: <span class="s">${file:/etc/jackfield/secrets/key-web}</span>
+    <span class="k">keyInPath</span>: <span class="v">true</span>             <span class="c"># /k/&lt;key&gt;/mcp</span>
+    <span class="k">profile</span>: <span class="v">core</span>
+
+  <span class="k">thrifty</span>:
+    <span class="k">key</span>: <span class="s">${file:/etc/jackfield/secrets/key-thrifty}</span>
+    <span class="k">profile</span>: <span class="v">full</span>
+    <span class="k">expose</span>: <span class="v">search</span>             <span class="c"># find_tool + call_tool</span></pre>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <div class="wrap">
+      <span class="eyebrow">Quickstart</span>
+      <h2>It ships with a working example.</h2>
+      <p class="sub">Two MCP servers, three clients, nothing to install and no network needed.</p>
+<pre class="code">git clone https://github.com/PabloPC05/jackfield &amp;&amp; cd jackfield
+npm install &amp;&amp; npm run build
+
+jackfield check  -c examples/jackfield.yaml   <span class="c"># does everything connect?</span>
+jackfield tools  -c examples/jackfield.yaml --by-source
+jackfield routes -c examples/jackfield.yaml   <span class="c"># what to paste into each agent</span>
+jackfield serve  -c examples/jackfield.yaml</pre>
+<pre class="code"><span class="c">$ jackfield tools --by-source</span>
+
+source    tools  definitions  tokens (rough)
+--------  -----  -----------  --------------
+porkbun     120  191 KB       ~48,900
+github       49  137 KB       ~35,100
+coolify      77   71 KB       ~18,200
+memoria      15   14 KB        ~3,600
+
+505 tools, 713 KB of definitions, about 182,000 tokens
+for "claude-code" if the client loads them all.</pre>
+    </div>
+  </section>
+
+  <section id="run">
+    <div class="wrap">
+      <span class="eyebrow">Run it</span>
+      <h2>Hosting is a choice, not an architecture.</h2>
+      <p class="sub">
+        The HTTP layer is written against Web <code>Request</code>/<code>Response</code>, so the same
+        gateway runs as a process, in a container, on NixOS, or in a serverless function. What a host
+        cannot do, an executor on a machine you own does — so the host never gets to decide what your
+        tools may be.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Where</th><th>How</th><th>Caveat</th></tr></thead>
+          <tbody>
+            <tr><td><strong>A process</strong></td><td><code>jackfield serve</code></td><td class="yes">Everything works. The default.</td></tr>
+            <tr><td><strong>systemd</strong></td><td><code>deploy/systemd</code></td><td>Hardened unit; one read-only secrets directory.</td></tr>
+            <tr><td><strong>Docker</strong></td><td><code>deploy/docker</code></td><td>Mount secrets as files, not env vars.</td></tr>
+            <tr><td><strong>NixOS</strong></td><td><code>services.jackfield</code></td><td>Config goes to the world-readable store, so secrets are file references.</td></tr>
+            <tr><td><strong>Serverless</strong></td><td><code>createWebHandler</code></td><td>Needs <code>stateless: true</code>: no sessions, no forms, no child processes. Platform specifics not yet verified live.</td></tr>
+            <tr><td><strong>Your machine</strong></td><td><code>jackfield-executor</code></td><td>The half that needs a process. Reach it over a private network.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="wrap">
+      <span class="eyebrow">Compared</span>
+      <h2>Several of the alternatives are better than this one.</h2>
+      <p class="sub">
+        Just not at the same things. Written from each project's own documentation in November 2026;
+        these projects move, and most published comparisons of MCP gateways are written by one of the
+        vendors in them — including, in a sense, this one.
+      </p>
+      <div class="two">
+        <div class="note glass"><h3>agentgateway</h3><p>A general-purpose agent proxy under a foundation, configured by file. Far more mature, and much broader. Start there if you want one proven proxy for everything.</p></div>
+        <div class="note glass"><h3>ToolHive</h3><p>Runs each MCP server in a container and has the same kind of <code>find_tool</code> optimiser. Its isolation has no equivalent here.</p></div>
+        <div class="note glass"><h3>ContextForge · MetaMCP · Obot</h3><p>Web UIs, upstream OAuth with stored credentials, team auditing. The right answer if you want to add servers by clicking; the opposite trade to a file in git.</p></div>
+        <div class="note glass"><h3>Docker MCP Gateway · MCPHub · Bifrost</h3><p>Container profiles, hub-style discovery, high-throughput proxying. Worth a look if one of those is your emphasis.</p></div>
+      </div>
+      <p class="honest" id="honest">
+        <strong>What Jackfield is not:</strong> mature. It is new, it has not run for long in production,
+        and its interfaces may change before 1.0. It has no container isolation, no UI to add servers,
+        no upstream OAuth, and no multi-tenant auditing. What it has is the half of MCP the others drop,
+        and a configuration you can read in a diff.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap fin">
+    <div>
+      <strong style="color: var(--ink)">Jackfield</strong> — a declarative MCP gateway you can run anywhere.<br>
+      MIT. Built by <a href="https://ppardocotos.com">Pablo Pardo Cotos</a>.
+    </div>
+    <div>
+      <a href="https://github.com/PabloPC05/jackfield">Source</a> ·
+      <a href="https://modelcontextprotocol.io">MCP</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const FEATURES = __FEATURES__;
+
+const GROUPS = [
+  { id: 'all', label: 'All' },
+  { id: 'core', label: 'The gateway' },
+  { id: 'approvals', label: 'Approvals' },
+  { id: 'executor', label: 'Executor' },
+  { id: 'run', label: 'Running it' },
+  { id: 'later', label: 'Later' }
+];
+const STATUSES = [
+  { id: 'any', label: 'Any state' },
+  { id: 'done', label: 'Built' },
+  { id: 'partial', label: 'Partial' },
+  { id: 'planned', label: 'Planned' }
+];
+
+const state = { group: 'all', status: 'any', q: '' };
+
+const $ = id => document.getElementById(id);
+const grid = $('grid'), empty = $('empty'), count = $('count');
+
+function chips(host, items, key) {
+  host.replaceChildren(...items.map(item => {
+    const button = document.createElement('button');
+    button.className = 'chip';
+    button.type = 'button';
+    button.textContent = item.label;
+    button.setAttribute('aria-pressed', String(state[key] === item.id));
+    button.addEventListener('click', () => {
+      state[key] = item.id;
+      chips(host, items, key);
+      render();
+    });
+    return button;
+  }));
+}
+
+function matches(feature) {
+  if (state.group !== 'all' && feature.group !== state.group) return false;
+  if (state.status !== 'any' && feature.status !== state.status) return false;
+  if (state.q) {
+    const haystack = (feature.title + ' ' + feature.body + ' ' + (feature.detail || '') + ' ' + feature.group).toLowerCase();
+    if (!state.q.toLowerCase().split(/\s+/).every(term => haystack.includes(term))) return false;
+  }
+  return true;
+}
+
+const LABEL = { done: 'Built', partial: 'Partial', planned: 'Planned' };
+
+function render() {
+  const shown = FEATURES.filter(matches);
+  grid.replaceChildren(...shown.map(feature => {
+    const card = document.createElement('article');
+    card.className = 'card glass';
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const pill = document.createElement('span');
+    pill.className = 'pill ' + feature.status;
+    pill.textContent = LABEL[feature.status];
+    meta.append(pill);
+    if (feature.star) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.textContent = 'Rare';
+      star.title = 'No other gateway appears to combine this';
+      meta.append(star);
+    }
+
+    const title = document.createElement('h3');
+    title.textContent = feature.title;
+
+    const body = document.createElement('p');
+    body.innerHTML = feature.body;
+
+    card.append(meta, title, body);
+    if (feature.detail) {
+      const detail = document.createElement('div');
+      detail.className = 'detail';
+      detail.innerHTML = feature.detail;
+      card.append(detail);
+    }
+    return card;
+  }));
+
+  const built = shown.filter(feature => feature.status === 'done').length;
+  count.textContent = shown.length + ' shown · ' + built + ' built';
+  empty.hidden = shown.length > 0;
+}
+
+chips($('groups'), GROUPS, 'group');
+chips($('statuses'), STATUSES, 'status');
+$('q').addEventListener('input', event => { state.q = event.target.value; render(); });
+$('reset').addEventListener('click', () => {
+  state.group = 'all'; state.status = 'any'; state.q = ''; $('q').value = '';
+  chips($('groups'), GROUPS, 'group');
+  chips($('statuses'), STATUSES, 'status');
+  render();
+});
+render();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import type { DownstreamBridge, UpstreamStatus } from '../upstream/types.js';
 import { ConfigError } from '../util/errors.js';
 import { createLogger, type Logger } from '../util/logger.js';
 import { buildCatalog, type Catalog } from './catalog.js';
+import { Notifier } from './notify.js';
 import { resolveSelection, type Selection } from './selection.js';
 import { GatewaySession } from './session.js';
 
@@ -32,6 +33,7 @@ export class Gateway {
     private readonly selections = new Map<string, Selection>();
     private readonly catalogs = new Map<string, CatalogEntry>();
     private readonly discovery: UpstreamPool;
+    private readonly notifier: Notifier;
     private closed = false;
 
     constructor(options: GatewayOptions) {
@@ -50,6 +52,8 @@ export class Gateway {
             logger: this.logger.child({ pool: 'discovery' }),
             bridge: this.createDiscoveryBridge()
         });
+
+        this.notifier = new Notifier(this.config.notify, this.logger.child({ part: 'notify' }));
 
         for (const clientId of Object.keys(this.config.clients)) {
             this.selections.set(clientId, resolveSelection(this.config, clientId));
@@ -139,6 +143,7 @@ export class Gateway {
             selection,
             logger: this.logger,
             getCatalog: options => this.getCatalog(clientId, options ?? {}),
+            notifier: this.notifier,
             ...(cached?.instructions ? { instructions: cached.instructions } : {})
         });
     }

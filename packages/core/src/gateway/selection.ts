@@ -1,4 +1,4 @@
-import type { ClientConfig, Config, ProfileConfig } from '../config/schema.js';
+import type { ClientConfig, Config, PermissionRule, ProfileConfig } from '../config/schema.js';
 import { ConfigError } from '../util/errors.js';
 import type { PrefixMode } from '../util/names.js';
 
@@ -19,6 +19,11 @@ export interface Selection {
     prefix: PrefixMode;
     separator: string;
     instructions?: string;
+    /**
+     * Rules from this client and its profiles. The global rules in
+     * `config.permissions` are applied as a floor on top of these.
+     */
+    permissions: PermissionRule[];
 }
 
 /** Resolves upstream selectors (`*`, `id`, `tag:name`, `glob*`) to concrete ids, in config order. */
@@ -79,6 +84,7 @@ export function resolveSelection(config: Config, clientId: string): Selection {
     const exclude: string[] = [];
     const alwaysExpose: string[] = [];
     const instructions: string[] = [];
+    const permissions: PermissionRule[] = [];
 
     for (const layer of layers) {
         if (layer.upstreams) upstreams = layer.upstreams;
@@ -88,6 +94,7 @@ export function resolveSelection(config: Config, clientId: string): Selection {
         if (layer.exclude) exclude.push(...layer.exclude);
         if (layer.alwaysExpose) alwaysExpose.push(...layer.alwaysExpose);
         if (layer.instructions) instructions.push(layer.instructions);
+        if (layer.permissions) permissions.push(...layer.permissions);
     }
 
     return {
@@ -98,6 +105,7 @@ export function resolveSelection(config: Config, clientId: string): Selection {
         expose: expose ?? config.defaults.expose,
         prefix: prefix ?? config.defaults.prefix,
         separator: config.defaults.separator,
+        permissions,
         ...(instructions.length ? { instructions: instructions.join('\n\n') } : {})
     };
 }

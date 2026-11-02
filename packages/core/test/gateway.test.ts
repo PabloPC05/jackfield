@@ -90,7 +90,18 @@ describe('aggregation', () => {
         const { tools } = await client.listTools();
         const names = tools.map(tool => tool.name).sort();
 
-        assert.deepEqual(names, ['alpha_ask', 'alpha_echo', 'alpha_search', 'alpha_slow', 'beta_echo', 'beta_search']);
+        assert.deepEqual(names, [
+            'alpha_ask',
+            'alpha_big',
+            'alpha_echo',
+            'alpha_remove',
+            'alpha_search',
+            'alpha_slow',
+            'beta_big',
+            'beta_echo',
+            'beta_remove',
+            'beta_search'
+        ]);
         await client.close();
     });
 
@@ -135,7 +146,7 @@ describe('profiles', () => {
         const { tools } = await client.listTools();
         const names = tools.map(tool => tool.name).sort();
 
-        assert.deepEqual(names, ['alpha_ask', 'alpha_echo', 'alpha_slow']);
+        assert.deepEqual(names, ['alpha_ask', 'alpha_big', 'alpha_echo', 'alpha_remove', 'alpha_slow']);
         await client.close();
     });
 
@@ -153,6 +164,7 @@ describe('search mode', () => {
         const names = tools.map(tool => tool.name).sort();
 
         assert.deepEqual(names, ['alpha_echo', 'call_tool', 'find_tool']);
+        assert.ok(tools.length === 3, 'search mode must not list the rest of the catalogue');
         await client.close();
     });
 

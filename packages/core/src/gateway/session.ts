@@ -12,6 +12,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import type { Config } from '../config/schema.js';
+import { trimResult } from '../util/trim.js';
+import { decideLayered, describeCall } from './permissions.js';
+import type { Notifier } from './notify.js';
 import { UpstreamPool } from '../upstream/pool.js';
 import type { CallContext, DownstreamBridge } from '../upstream/types.js';
 import { errorMessage } from '../util/errors.js';
@@ -31,6 +34,7 @@ export interface SessionOptions {
     /** Shared catalog for this client, refreshed by the gateway. */
     getCatalog: (options?: { refresh?: boolean }) => Promise<Catalog>;
     instructions?: string;
+    notifier: Notifier;
 }
 
 /**
@@ -189,21 +193,156 @@ export class GatewaySession {
             throw new McpError(ErrorCode.InvalidParams, `"${name}" belongs to ${exposed.upstreamId}, which this client cannot use`);
         }
 
+        const { notifier } = this.options;
+        const watched = notifier.watches(exposed.upstreamId, exposed.localName);
+
+        // Permission check, before anything runs.
+        const decision = decideLayered(
+            this.options.selection.permissions,
+            this.options.config.permissions,
+            exposed.upstreamId,
+            exposed.localName
+        );
+        if (decision.action === 'deny') {
+            this.logger.info('call denied by a permission rule', { tool: name, upstream: exposed.upstreamId });
+            notifier.send({
+                event: 'denied',
+                client: this.options.clientId,
+                tool: name,
+                upstream: exposed.upstreamId,
+                detail: decision.reason ?? 'denied by a permission rule'
+            });
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: 'text',
+                        text: decision.reason
+                            ? `${name} is not allowed through this gateway: ${decision.reason}`
+                            : `${name} is not allowed through this gateway.`
+                    }
+                ]
+            };
+        }
+
+        if (decision.action === 'ask') {
+            const verdict = await this.confirm(name, args, decision.reason);
+            if (!verdict.allowed) {
+                notifier.send({
+                    event: 'denied',
+                    client: this.options.clientId,
+                    tool: name,
+                    upstream: exposed.upstreamId,
+                    detail: verdict.why
+                });
+                return { isError: true, content: [{ type: 'text', text: verdict.why }] };
+            }
+            notifier.send({
+                event: 'asked',
+                client: this.options.clientId,
+                tool: name,
+                upstream: exposed.upstreamId,
+                detail: 'the user approved it'
+            });
+        }
+
+        if (watched) {
+            notifier.send({
+                event: 'call',
+                client: this.options.clientId,
+                tool: name,
+                upstream: exposed.upstreamId,
+                detail: describeCall(name, args)
+            });
+        }
+
         const started = Date.now();
         try {
-            const result = await connection.callTool(exposed.wireName, args, context);
+            const raw = await connection.callTool(exposed.wireName, args, context);
+            const limit =
+                this.options.config.upstreams[exposed.upstreamId]?.limits?.maxResponseBytes ??
+                this.options.config.defaults.limits.maxResponseBytes;
+            const { result, trimmedBytes } = trimResult(raw, limit);
+            if (trimmedBytes) {
+                this.logger.info('result trimmed', { tool: name, upstream: exposed.upstreamId, trimmedBytes, limit });
+            }
             this.logger.debug('tools/call', { tool: name, upstream: exposed.upstreamId, ms: Date.now() - started });
+            if (watched) {
+                notifier.send({
+                    event: 'result',
+                    client: this.options.clientId,
+                    tool: name,
+                    upstream: exposed.upstreamId,
+                    detail: result.isError ? 'the tool reported an error' : `done in ${Date.now() - started} ms`
+                });
+            }
             return result;
         } catch (error) {
             if (error instanceof McpError) throw error;
             const message = errorMessage(error);
             this.logger.warn('tools/call failed', { tool: name, upstream: exposed.upstreamId, error: message, ms: Date.now() - started });
+            if (watched) {
+                notifier.send({
+                    event: 'error',
+                    client: this.options.clientId,
+                    tool: name,
+                    upstream: exposed.upstreamId,
+                    detail: message
+                });
+            }
             // Returned as tool output, not a protocol error: the agent can read
             // it, say so, and try something else.
             return {
                 isError: true,
                 content: [{ type: 'text', text: `${exposed.upstreamId} could not run ${name}: ${message}` }]
             };
+        }
+    }
+
+    /**
+     * Asks the agent's user to approve a call, through an MCP form.
+     *
+     * A client that cannot show forms is refused rather than waved through: an
+     * approval the agent grants itself is not an approval, and silently
+     * allowing the call would make the rule decorative. The refusal says what
+     * the client would need, so the cause is visible.
+     */
+    private async confirm(toolName: string, args: unknown, reason?: string): Promise<{ allowed: boolean; why: string }> {
+        const bridge = this.pool.bridge;
+        if (!bridge.capabilities.elicitation) {
+            return {
+                allowed: false,
+                why:
+                    `${toolName} needs the user's approval, and this client cannot show a confirmation form, ` +
+                    `so the gateway refused it. Run it from a client that supports MCP elicitation, or change the rule.`
+            };
+        }
+
+        const message =
+            `Approve this call?\n\n${describeCall(toolName, args)}` + (reason ? `\n\nWhy you are being asked: ${reason}` : '');
+
+        try {
+            const answer = await bridge.elicitInput({
+                message,
+                requestedSchema: {
+                    type: 'object',
+                    properties: {
+                        confirm: {
+                            type: 'boolean',
+                            title: 'Run it',
+                            description: 'Confirm that this call should go ahead.'
+                        }
+                    },
+                    required: ['confirm']
+                }
+            });
+
+            const confirmed = answer.action === 'accept' && (answer.content as { confirm?: unknown } | undefined)?.confirm !== false;
+            return confirmed
+                ? { allowed: true, why: 'approved' }
+                : { allowed: false, why: `${toolName} was not approved by the user.` };
+        } catch (error) {
+            return { allowed: false, why: `${toolName} needed approval and the request failed: ${errorMessage(error)}` };
         }
     }
 

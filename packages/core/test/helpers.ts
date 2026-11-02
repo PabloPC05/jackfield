@@ -61,6 +61,21 @@ export async function startStubUpstream(name: string, options: { hostHeaderMustB
             }
         );
 
+        server.registerTool(
+            'big',
+            { description: 'Return a lot of text', inputSchema: { kb: z.number() } },
+            async ({ kb }) => ({ content: [{ type: 'text', text: 'x'.repeat(Math.round(kb * 1024)) }] })
+        );
+
+        server.registerTool(
+            'remove',
+            { description: 'Pretend to delete something', inputSchema: { what: z.string() } },
+            async ({ what }) => {
+                calls.push({ tool: 'remove', args: { what } });
+                return { content: [{ type: 'text', text: `removed ${what}` }] };
+            }
+        );
+
         server.registerTool('ask', { description: 'Ask the agent for a value', inputSchema: {} }, async (_args, extra) => {
             const answer = await extra.sendRequest(
                 {

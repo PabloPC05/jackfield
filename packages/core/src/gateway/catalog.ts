@@ -16,6 +16,8 @@ export interface ExposedTool {
     upstreamId: string;
     /** Name to send upstream. */
     wireName: string;
+    /** Name on the upstream after renaming, used to match globs. */
+    localName: string;
 }
 
 export interface Catalog {
@@ -87,7 +89,8 @@ export async function buildCatalog(options: BuildCatalogOptions): Promise<Catalo
             name,
             upstreamId: entry.upstreamId,
             wireName: entry.wireName,
-            tool: { ...entry.tool, name }
+            localName: entry.localName,
+            tool: applyOverride(options.config, entry.upstreamId, entry.wireName, { ...entry.tool, name })
         };
         tools.push(exposed);
         byName.set(name, exposed);
@@ -112,6 +115,24 @@ export async function buildCatalog(options: BuildCatalogOptions): Promise<Catalo
         index,
         ...(buildInstructions(options, unavailable) ? { instructions: buildInstructions(options, unavailable) } : {}),
         builtAt: Date.now()
+    };
+}
+
+/**
+ * Rewrites what the agent reads about a tool, without touching its server.
+ *
+ * Keyed by the upstream's own name for the tool, so an override survives a
+ * rename. Only wording and hints: the input schema is the server's contract
+ * and the gateway has no business changing it.
+ */
+function applyOverride(config: Config, upstreamId: string, wireName: string, tool: Tool): Tool {
+    const override = config.upstreams[upstreamId]?.tools?.override?.[wireName];
+    if (!override) return tool;
+    return {
+        ...tool,
+        ...(override.title ? { title: override.title } : {}),
+        ...(override.description ? { description: override.description } : {}),
+        ...(override.annotations ? { annotations: { ...(tool.annotations ?? {}), ...override.annotations } } : {})
     };
 }
 
@@ -140,11 +161,6 @@ function buildInstructions(options: BuildCatalogOptions, unavailable: { id: stri
 export function visibleTools(catalog: Catalog, selection: Selection): ExposedTool[] {
     if (selection.expose === 'all') return catalog.tools;
     return catalog.tools.filter(exposed =>
-        selection.alwaysExpose.some(glob => matchesGlob(glob, exposed.upstreamId, stripPrefix(exposed, selection)))
+        selection.alwaysExpose.some(glob => matchesGlob(glob, exposed.upstreamId, exposed.localName))
     );
-}
-
-function stripPrefix(exposed: ExposedTool, selection: Selection): string {
-    const head = `${exposed.upstreamId}${selection.separator}`;
-    return exposed.name.startsWith(head) ? exposed.name.slice(head.length) : exposed.name;
 }

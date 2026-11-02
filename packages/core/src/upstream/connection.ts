@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
     CreateMessageRequestSchema,
@@ -11,6 +12,7 @@ import {
     type Tool
 } from '@modelcontextprotocol/sdk/types.js';
 
+import { createCliServer } from '../builtin/cli-server.js';
 import type { Config, ExecutorConfig, UpstreamConfig } from '../config/schema.js';
 import { errorMessage } from '../util/errors.js';
 import type { Logger } from '../util/logger.js';
@@ -168,6 +170,22 @@ export class UpstreamConnection {
         };
     }
 
+    /** Built-in servers run in this process, reached over a pair of in-memory pipes. */
+    private createBuiltinTransport(): Transport {
+        const config = this.config;
+        if (config.transport !== 'cli') throw new Error(`${this.id} is not a built-in upstream`);
+        const [mine, theirs] = InMemoryTransport.createLinkedPair();
+        const server = createCliServer({
+            id: this.id,
+            commands: config.commands,
+            timeoutMs: config.commandTimeoutMs,
+            maxOutputBytes: config.maxOutputBytes,
+            logger: this.logger
+        });
+        void server.connect(theirs);
+        return mine;
+    }
+
     private createTransport(): Transport {
         const config = this.config;
         switch (config.transport) {
@@ -194,6 +212,8 @@ export class UpstreamConnection {
                     stderr: 'pipe'
                 });
             }
+            case 'cli':
+                return this.createBuiltinTransport();
             case 'executor': {
                 const executor: ExecutorConfig | undefined = this.options.executors[config.executor];
                 if (!executor) throw new Error(`no executor named ${config.executor}`);
