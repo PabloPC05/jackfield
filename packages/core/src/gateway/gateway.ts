@@ -1,9 +1,11 @@
 import type { Config } from '../config/schema.js';
+import { TunnelHub } from '../http/tunnel.js';
 import { UpstreamPool } from '../upstream/pool.js';
 import type { DownstreamBridge, UpstreamStatus } from '../upstream/types.js';
 import { ConfigError } from '../util/errors.js';
 import { createLogger, type Logger } from '../util/logger.js';
 import { buildCatalog, type Catalog } from './catalog.js';
+import { ApprovalStore } from './approvals.js';
 import { Notifier } from './notify.js';
 import { resolveSelection, type Selection } from './selection.js';
 import { GatewaySession } from './session.js';
@@ -34,6 +36,9 @@ export class Gateway {
     private readonly catalogs = new Map<string, CatalogEntry>();
     private readonly discovery: UpstreamPool;
     private readonly notifier: Notifier;
+    readonly approvals: ApprovalStore;
+    /** Executors that dial in rather than being called. */
+    readonly tunnels: TunnelHub;
     private closed = false;
 
     constructor(options: GatewayOptions) {
@@ -42,18 +47,31 @@ export class Gateway {
             options.logger ??
             createLogger({ level: this.config.server.logLevel, format: this.config.server.logFormat });
 
+        this.tunnels = new TunnelHub({
+            logger: this.logger.child({ part: 'tunnel' }),
+            requestTimeoutMs: this.config.server.requestTimeoutMs,
+            onAttach: () => this.invalidateCatalogs()
+        });
+
         const enabled = Object.entries(this.config.upstreams)
             .filter(([, upstream]) => upstream.enabled)
             .map(([id]) => id);
 
         this.discovery = new UpstreamPool({
             config: this.config,
+            tunnelFetch: name => this.tunnels.fetchThrough(name),
             upstreamIds: enabled,
             logger: this.logger.child({ pool: 'discovery' }),
             bridge: this.createDiscoveryBridge()
         });
 
         this.notifier = new Notifier(this.config.notify, this.logger.child({ part: 'notify' }));
+        this.approvals = new ApprovalStore({
+            ...(this.config.approvals.publicUrl ? { publicUrl: this.config.approvals.publicUrl } : {}),
+            timeoutMs: this.config.approvals.timeoutMs,
+            ...(this.config.approvals.passphrase ? { passphrase: this.config.approvals.passphrase } : {}),
+            logger: this.logger.child({ part: 'approvals' })
+        });
 
         for (const clientId of Object.keys(this.config.clients)) {
             this.selections.set(clientId, resolveSelection(this.config, clientId));
@@ -107,7 +125,13 @@ export class Gateway {
         })
             .then(catalog => {
                 entry.catalog = catalog;
-                entry.expiresAt = Date.now() + this.config.defaults.catalogTtlMs;
+                // A catalogue missing an upstream is a catalogue that is wrong
+                // as soon as that upstream comes back, so it is held briefly
+                // rather than for the full term.
+                const ttl = catalog.unavailable.length
+                    ? Math.min(this.config.defaults.catalogTtlMs, 15_000)
+                    : this.config.defaults.catalogTtlMs;
+                entry.expiresAt = Date.now() + ttl;
                 this.logger.debug('catalog built', {
                     client: clientId,
                     tools: catalog.tools.length,
@@ -144,6 +168,8 @@ export class Gateway {
             logger: this.logger,
             getCatalog: options => this.getCatalog(clientId, options ?? {}),
             notifier: this.notifier,
+            approvals: this.approvals,
+            tunnelFetch: name => this.tunnels.fetchThrough(name),
             ...(cached?.instructions ? { instructions: cached.instructions } : {})
         });
     }
@@ -154,6 +180,8 @@ export class Gateway {
 
     async close(): Promise<void> {
         this.closed = true;
+        this.tunnels.closeAll();
+        this.approvals.clear();
         this.catalogs.clear();
         await this.discovery.closeAll();
     }

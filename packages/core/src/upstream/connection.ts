@@ -3,7 +3,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { FetchLike, Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
     CreateMessageRequestSchema,
     ElicitRequestSchema,
@@ -13,6 +13,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { createCliServer } from '../builtin/cli-server.js';
+import { AuthStore, JackfieldOAuthProvider } from './oauth.js';
 import type { Config, ExecutorConfig, UpstreamConfig } from '../config/schema.js';
 import { errorMessage } from '../util/errors.js';
 import type { Logger } from '../util/logger.js';
@@ -28,6 +29,10 @@ export interface UpstreamConnectionOptions {
     defaults: Config['defaults'];
     requestTimeoutMs: number;
     startupTimeoutMs: number;
+    /** Where OAuth credentials live, when an upstream uses them. */
+    auth?: { storeDir: string; redirectUrl: string };
+    /** A `fetch` that reaches an executor which dialled in. */
+    tunnelFetch?: (executor: string) => FetchLike;
     logger: Logger;
     bridge: DownstreamBridge;
 }
@@ -190,12 +195,16 @@ export class UpstreamConnection {
         const config = this.config;
         switch (config.transport) {
             case 'http': {
+                const authProvider = this.createAuthProvider();
                 return new StreamableHTTPClientTransport(new URL(config.url), {
-                    requestInit: { headers: this.httpHeaders(config.headers, config.token, config.hostHeader) }
+                    requestInit: { headers: this.httpHeaders(config.headers, config.token, config.hostHeader) },
+                    ...(authProvider ? { authProvider } : {})
                 });
             }
             case 'sse': {
+                const authProvider = this.createAuthProvider();
                 return new SSEClientTransport(new URL(config.url), {
+                    ...(authProvider ? { authProvider } : {}),
                     requestInit: { headers: this.httpHeaders(config.headers, config.token) },
                     eventSourceInit: {
                         fetch: (url, init) =>
@@ -218,12 +227,45 @@ export class UpstreamConnection {
                 const executor: ExecutorConfig | undefined = this.options.executors[config.executor];
                 if (!executor) throw new Error(`no executor named ${config.executor}`);
                 const remote = config.remote ?? this.id;
-                const url = new URL(`./upstream/${encodeURIComponent(remote)}/mcp`, ensureTrailingSlash(executor.url));
+                const path = `./upstream/${encodeURIComponent(remote)}/mcp`;
+
+                if (executor.attach) {
+                    // The executor dialled in: the URL is only an address
+                    // inside the tunnel, never resolved on any network.
+                    const tunnel = this.options.tunnelFetch?.(config.executor);
+                    if (!tunnel) throw new Error(`no tunnel available for the executor "${config.executor}"`);
+                    return new StreamableHTTPClientTransport(new URL(path, 'http://executor.invalid/'), {
+                        fetch: tunnel,
+                        requestInit: { headers: { Authorization: `Bearer ${executor.token}` } }
+                    });
+                }
+
+                const url = new URL(path, ensureTrailingSlash(executor.url as string));
                 return new StreamableHTTPClientTransport(url, {
                     requestInit: { headers: { Authorization: `Bearer ${executor.token}` } }
                 });
             }
         }
+    }
+
+    /** A provider that reads stored credentials; it never starts a login. */
+    private createAuthProvider(): JackfieldOAuthProvider | undefined {
+        const config = this.config;
+        if (config.transport !== 'http' && config.transport !== 'sse') return undefined;
+        if (!config.oauth) return undefined;
+        const auth = this.options.auth;
+        if (!auth) return undefined;
+
+        return new JackfieldOAuthProvider({
+            upstreamId: this.id,
+            store: new AuthStore(auth.storeDir, this.logger),
+            redirectUrl: auth.redirectUrl,
+            ...(config.oauth.scope ? { scope: config.oauth.scope } : {}),
+            ...(config.oauth.clientId ? { clientId: config.oauth.clientId } : {}),
+            ...(config.oauth.clientSecret ? { clientSecret: config.oauth.clientSecret } : {}),
+            ...(config.oauth.clientName ? { clientName: config.oauth.clientName } : {}),
+            logger: this.logger
+        });
     }
 
     private httpHeaders(headers: Record<string, string> | undefined, token: string | undefined, hostHeader?: string): Record<string, string> {

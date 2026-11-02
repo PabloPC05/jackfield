@@ -129,6 +129,34 @@ upstreams:
     executor: home
 ```
 
+### Or the other way round, with no port to open
+
+A machine behind NAT, on home broadband, or one you would simply rather not
+expose can **dial the gateway** instead:
+
+```yaml
+# in the gateway
+executors:
+  home:
+    attach: true
+    token: ${file:secrets/executor.token}
+```
+
+```bash
+# on the machine
+jackfield-executor --config executor.yaml \
+  --token-file /etc/jackfield/exec.token \
+  --core https://gateway.example.com --name home
+```
+
+The executor opens one long-lived stream outwards and the gateway pushes
+requests down it; answers come back as ordinary POSTs, streamed chunk by chunk
+so a server behind the tunnel can still hold an SSE stream open and ask the
+agent a question through it. It reconnects on its own, with backoff.
+
+Nothing has to reach the machine. The gateway only knows the executor by name
+and its token.
+
 The upstream definition itself does not change when you move it between the
 core and an executor: the same two lines of `transport` and location, in a
 different file. The core prefixes tool names once, at the core, so nothing

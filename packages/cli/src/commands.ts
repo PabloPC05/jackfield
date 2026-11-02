@@ -3,10 +3,11 @@ import { writeFile } from 'node:fs/promises';
 
 import {
     Gateway,
-    buildCatalog,
+    authStatus,
     createLogger,
     loadConfig,
-    resolveSelection,
+    login,
+    logout,
     serve,
     visibleTools,
     type Catalog
@@ -88,6 +89,26 @@ export async function commandCheck(args: { config?: string; json?: boolean }): P
             ]);
         }
         process.stdout.write(table(rows, ['client', 'profile', 'expose', 'reachable', 'listed']) + '\n');
+
+        const oauth = await authStatus(config, createLogger({ level: 'silent' }));
+        if (oauth.length) {
+            process.stdout.write(
+                '\n' +
+                    table(
+                        oauth.map(entry => [
+                            entry.id,
+                            entry.loggedIn ? 'logged in' : 'NOT logged in',
+                            entry.hasRefresh ? 'refreshable' : 'no refresh token'
+                        ]),
+                        ['oauth upstream', 'state', 'renewal']
+                    ) +
+                    '\n'
+            );
+            const missing = oauth.filter(entry => !entry.loggedIn);
+            if (missing.length) {
+                process.stdout.write(`\nRun: ${missing.map(entry => `jackfield login ${entry.id}`).join('\n     ')}\n`);
+            }
+        }
     }
 
     await gateway.close();
@@ -97,6 +118,33 @@ export async function commandCheck(args: { config?: string; json?: boolean }): P
         return 1;
     }
     return 0;
+}
+
+export async function commandLogin(args: { config?: string; upstream: string; manual?: boolean }): Promise<void> {
+    const path = await findConfig(args.config);
+    const { config } = await loadConfig(path);
+    const logger = createLogger({ level: 'warn' });
+
+    const result = await login({
+        config,
+        upstreamId: args.upstream,
+        logger,
+        ...(args.manual ? { manual: true } : {})
+    });
+
+    process.stdout.write(
+        `\nLogged in to "${result.upstreamId}". Credentials are in ${config.auth.storeDir}, mode 0600.\n` +
+            (result.refreshable
+                ? 'The gateway will refresh them on its own.\n'
+                : 'The server issued no refresh token, so this will need doing again when it expires.\n')
+    );
+}
+
+export async function commandLogout(args: { config?: string; upstream: string }): Promise<void> {
+    const path = await findConfig(args.config);
+    const { config } = await loadConfig(path);
+    await logout(config, args.upstream, createLogger({ level: 'warn' }));
+    process.stdout.write(`Forgot the credentials for "${args.upstream}".\n`);
 }
 
 export async function commandTools(args: { config?: string; client?: string; json?: boolean; bySource?: boolean }): Promise<void> {

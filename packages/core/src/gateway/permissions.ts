@@ -6,6 +6,10 @@ export type PermissionAction = 'allow' | 'ask' | 'deny';
 export interface PermissionDecision {
     action: PermissionAction;
     reason?: string;
+    /** Where to ask, when the action is `ask`. */
+    via?: 'client' | 'link' | 'any';
+    /** How long to wait for that answer. */
+    timeoutMs?: number;
 }
 
 const STRICTNESS: Record<PermissionAction, number> = { allow: 0, ask: 1, deny: 2 };
@@ -20,7 +24,12 @@ const STRICTNESS: Record<PermissionAction, number> = { allow: 0, ask: 1, deny: 2
 export function decide(rules: PermissionRule[], upstreamId: string, localName: string): PermissionDecision {
     for (const rule of rules) {
         if (rule.tools.some(glob => matchesGlob(glob, upstreamId, localName))) {
-            return { action: rule.action, ...(rule.reason ? { reason: rule.reason } : {}) };
+            return {
+                action: rule.action,
+                ...(rule.reason ? { reason: rule.reason } : {}),
+                ...(rule.via ? { via: rule.via } : {}),
+                ...(rule.timeoutMs ? { timeoutMs: rule.timeoutMs } : {})
+            };
         }
     }
     return { action: 'allow' };

@@ -3,7 +3,16 @@ import { parseArgs } from 'node:util';
 
 import { ConfigError } from '@jackfield/core';
 
-import { commandCheck, commandInit, commandKeygen, commandRoutes, commandServe, commandTools } from './commands.js';
+import {
+    commandCheck,
+    commandInit,
+    commandKeygen,
+    commandLogin,
+    commandLogout,
+    commandRoutes,
+    commandServe,
+    commandTools
+} from './commands.js';
 
 const USAGE = `jackfield — one MCP endpoint for every agent you use
 
@@ -14,6 +23,8 @@ Commands:
   check                 Validate the config and connect to every upstream
   tools                 List what a client would see, with its size
   routes                Print the URL and key each client needs
+  login <upstream>      Log in to an upstream that uses OAuth
+  logout <upstream>     Forget an upstream's stored credentials
   keygen                Generate a key
   init                  Write a starter config file
 
@@ -27,6 +38,7 @@ Options:
       --by-source       Group by upstream and show the token cost (tools)
       --json            Machine-readable output (check, tools)
       --public-url <u>  Base URL to print (routes)
+      --manual          Print the URL and take the code by hand (login)
       --bytes <n>       Key length in bytes, default 32 (keygen)
       --count <n>       How many keys to generate (keygen)
       --force           Overwrite an existing file (init)
@@ -48,6 +60,7 @@ async function main(argv: string[]): Promise<number> {
             'by-source': { type: 'boolean' },
             json: { type: 'boolean' },
             'public-url': { type: 'string' },
+            manual: { type: 'boolean' },
             bytes: { type: 'string' },
             count: { type: 'string' },
             force: { type: 'boolean' },
@@ -101,6 +114,18 @@ async function main(argv: string[]): Promise<number> {
                 ...(values['public-url'] ? { publicUrl: values['public-url'] } : {})
             });
             return 0;
+        case 'login': {
+            const upstream = positionals[1];
+            if (!upstream) throw new Error('which upstream? e.g. jackfield login github');
+            await commandLogin({ ...(config ? { config } : {}), upstream, ...(values.manual ? { manual: true } : {}) });
+            return 0;
+        }
+        case 'logout': {
+            const upstream = positionals[1];
+            if (!upstream) throw new Error('which upstream? e.g. jackfield logout github');
+            await commandLogout({ ...(config ? { config } : {}), upstream });
+            return 0;
+        }
         case 'keygen':
             commandKeygen({
                 ...(number(values.bytes, 'bytes') !== undefined ? { bytes: number(values.bytes, 'bytes') as number } : {}),

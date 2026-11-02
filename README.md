@@ -15,14 +15,15 @@ file in git decides who reaches what.
                                               └─ an executor on your machine
 ```
 
-**Status: early.** The gateway works and is covered by 53 tests end to end —
-aggregation, name collisions, profiles, search mode, tool overrides, response
-trimming, permission rules, notifications, elicitation, progress, sessions,
-stateless mode, the command-line sandbox, and a split core/executor setup. It
-has not yet run for long in production, and interfaces may still change before
-1.0.
+**Status: early.** 74 tests cover it end to end — aggregation, name collisions,
+profiles, search mode, tool overrides, response trimming, permission rules,
+notifications, elicitation, out-of-band approvals, OAuth against a full
+authorization server, progress, sessions, stateless mode, the command-line
+sandbox, the read-only view, and a split core/executor setup over both a direct
+connection and a dial-in tunnel. It has not yet run for long in production, and
+interfaces may still change before 1.0.
 
-Every feature, with what is actually built: **<https://jackfield.ppardocotos.com>**
+Everything it does: **<https://jackfield.ppardocotos.com>**
 
 ## Why another one
 
@@ -52,16 +53,21 @@ dropped is the half that breaks real setups:
   `transport: cli` turns a service used twice a month into one tool instead of
   a hundred definitions you pay for every turn.
 - **Some calls should need a person.** `permissions` gives every tool `allow`,
-  `ask` or `deny`. `ask` puts the question to the user through an MCP form
-  before the call runs — and a client that cannot show forms is refused rather
-  than waved through, because an approval the agent grants itself is not an
-  approval.
+  `ask` or `deny`. `ask` puts the question to the user — as a form in their
+  client, or with `via: link` as a one-time URL sent to your notifier and to
+  nobody else, which is the only route that works when nobody is watching the
+  agent. The agent never sees the link, so it cannot approve itself.
 - **One reply should not eat the context window.** Results over a limit are
   trimmed, with a note saying how much went and to ask for less. Descriptions
   and hints can be rewritten per tool without touching the server.
+- **Credentials belong to you, not to the agent.** OAuth upstream with
+  discovery, PKCE and refresh; tokens in one file per server at mode 0600, and
+  no agent ever sees one. The gateway never starts a login by itself — one that
+  could is one an agent could aim at a server of its choosing.
 - **Configuration belongs in git.** No database, no admin panel writing state
   behind your back. One file, secrets referenced rather than embedded, and a
-  deployment is a diff you can read.
+  deployment is a diff you can read. `/status` reads it back to you; it never
+  writes.
 
 ## Quickstart
 
@@ -154,6 +160,7 @@ gateway runs wherever you want it. Hosting is a choice, not an architecture.
 | Docker | [`deploy/docker`](deploy/docker) | |
 | NixOS | [`deploy/nix`](deploy/nix) | Module with options, secrets kept out of the store. |
 | Serverless | [`deploy/vercel`](deploy/vercel) | Needs `stateless: true`; see the limits below. |
+| Your machine | `jackfield-executor` | Hosts what a stateless core cannot. Can dial the gateway, so it needs no inbound port. |
 
 A serverless function cannot keep a session, start a child process, or hold a
 stream open for an hour. Rather than let that decide what your tools may be,
@@ -191,14 +198,12 @@ with the alternatives in [docs/comparison.md](docs/comparison.md).
 
 ## Not done yet
 
-- OAuth towards upstreams that require it (token files and headers work today).
-  This is also what would make forms work in stateless mode.
-- Approving from outside the conversation, with a passkey and a capture of what
-  is about to happen.
-- A browser hosted inside the executor, and reaching several machines from one.
-- An executor that dials out, so there is no inbound port at all.
 - Resources and prompts are forwarded off by default and are untested.
-- A read-only web view of what each client sees.
+- Stateless mode cannot do forms, sampling or `ask` rules, because there is no
+  session to ask on. The executor exists for exactly that gap; carrying
+  sessions in a shared store would close it properly.
+- Code execution against the tools, local embeddings for tool search, and more
+  than one person per gateway. See the roadmap on the site.
 - Published npm packages; for now, build from source.
 
 ## The landing page

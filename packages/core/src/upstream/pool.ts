@@ -1,3 +1,5 @@
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
+
 import type { Config } from '../config/schema.js';
 import type { Logger } from '../util/logger.js';
 import { UpstreamConnection } from './connection.js';
@@ -5,6 +7,8 @@ import type { DownstreamBridge, UpstreamStatus } from './types.js';
 
 export interface PoolOptions {
     config: Config;
+    /** A `fetch` that reaches an executor which dialled in. */
+    tunnelFetch?: (executor: string) => FetchLike;
     /** Upstream ids this pool may open, already resolved from the client's selection. */
     upstreamIds: string[];
     logger: Logger;
@@ -36,6 +40,8 @@ export class UpstreamPool {
                     defaults: config.defaults,
                     requestTimeoutMs: config.server.requestTimeoutMs,
                     startupTimeoutMs: config.defaults.startupTimeoutMs,
+                    auth: config.auth,
+                    ...(options.tunnelFetch ? { tunnelFetch: options.tunnelFetch } : {}),
                     logger: options.logger,
                     bridge: options.bridge
                 })

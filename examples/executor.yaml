@@ -1,0 +1,64 @@
+# A Jackfield executor: the machine-side half.
+#
+# It serves what a gateway core cannot host itself — child processes, a
+# browser with its sessions on disk, a command line — and nothing else.
+#
+#   # the gateway calls this machine (it needs to be reachable)
+#   jackfield-executor -c examples/executor.yaml --token-file secrets/executor.token
+#
+#   # or this machine calls the gateway, and needs no inbound port at all
+#   jackfield-executor -c examples/executor.yaml --token-file secrets/executor.token \
+#     --core https://gateway.example.com --name home
+
+server:
+  logLevel: info
+
+upstreams:
+  # ── A browser, with its sessions kept between runs ───────────────────────
+  # Any MCP browser server works; what matters is that its profile directory
+  # survives restarts, so logins do not have to be repeated, and that it runs
+  # here rather than in the gateway — a browser needs a process and a disk.
+  #
+  # Forms work through the gateway, so a page that asks for a login code
+  # reaches whoever is driving the agent.
+  browser:
+    description: A real browser, signed in, on this machine
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@playwright/mcp@latest"
+      - "--user-data-dir=/var/lib/jackfield/browser-profile"
+      - "--isolated=false"
+    timeoutMs: 180000
+
+  # ── A terminal, one named command at a time ──────────────────────────────
+  # Not a shell: each entry is one fixed program the agent may run, with the
+  # arguments it is allowed to pass. Compare with handing an agent root.
+  ops:
+    description: The few commands this machine is allowed to run
+    transport: cli
+    commandTimeoutMs: 120000
+    maxOutputBytes: 120000
+    commands:
+      systemctl:
+        description: "Inspect services. Example: args ['status', 'nginx']."
+        executable: systemctl
+        allowedSubcommands: ["status", "is-active", "list-units", "show"]
+      journal:
+        description: "Read logs. Example: args ['-u', 'nginx', '-n', '50']."
+        executable: journalctl
+        prefixArgs: ["--no-pager"]
+        deniedArgs: ["--vacuum-size", "--vacuum-time", "--rotate", "--flush"]
+      git:
+        description: "Read a repository. Example: args ['-C', '/srv/app', 'log', '--oneline', '-10']."
+        executable: git
+        allowedSubcommands: ["-C", "log", "status", "diff", "show"]
+
+  # ── Anything that speaks stdio ───────────────────────────────────────────
+  notes:
+    transport: stdio
+    command: node
+    args: ["examples/stdio-echo-server.mjs"]
+    env:
+      DEMO_NAME: notes

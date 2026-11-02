@@ -3,7 +3,7 @@ import { errorMessage } from '../util/errors.js';
 import type { Logger } from '../util/logger.js';
 import { matchesGlob } from '../util/names.js';
 
-export type NotifyEvent = 'call' | 'result' | 'asked' | 'denied' | 'error';
+export type NotifyEvent = 'call' | 'result' | 'asked' | 'denied' | 'error' | 'approval';
 
 export interface NotifyPayload {
     event: NotifyEvent;
@@ -11,6 +11,8 @@ export interface NotifyPayload {
     tool: string;
     upstream: string;
     detail?: string;
+    /** An approval link. Sent to the notifier and to nowhere else. */
+    link?: string;
 }
 
 /**
@@ -39,11 +41,16 @@ export class Notifier {
     send(payload: NotifyPayload): void {
         const config = this.config;
         if (!config) return;
-        if (!config.events.includes(payload.event)) return;
+        // An approval link is the whole point of asking out of band, so it is
+        // sent whatever `events` says: a configuration that swallowed it would
+        // leave a call waiting for a link nobody ever got.
+        if (payload.event !== 'approval' && !config.events.includes(payload.event)) return;
 
         const title = `${config.title}: ${payload.event}`;
         const body =
-            `${payload.client} → ${payload.tool} (${payload.upstream})` + (payload.detail ? `\n${payload.detail}` : '');
+            `${payload.client} → ${payload.tool} (${payload.upstream})` +
+            (payload.detail ? `\n${payload.detail}` : '') +
+            (payload.link ? `\n\nDecide: ${payload.link}` : '');
 
         const headers: Record<string, string> = {};
         if (config.token) headers['Authorization'] = `Bearer ${config.token}`;
@@ -55,7 +62,12 @@ export class Notifier {
                       headers: {
                           ...headers,
                           Title: title,
-                          Priority: payload.event === 'denied' || payload.event === 'error' ? 'high' : 'default',
+                          Priority:
+                              payload.event === 'approval'
+                                  ? 'urgent'
+                                  : payload.event === 'denied' || payload.event === 'error'
+                                    ? 'high'
+                                    : 'default',
                           Tags: payload.event
                       },
                       body,

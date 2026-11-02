@@ -1,110 +1,327 @@
 [
-  { "id": "keys", "group": "core", "status": "done", "star": true, "title": "One URL and one key per agent",
+  {
+    "id": "keys",
+    "group": "core",
+    "status": "done",
+    "star": true,
+    "title": "One URL and one key per agent",
     "body": "Every client gets its own key, its own view and its own revocation. Keys are compared in constant time and never reach a log line. <code>altKeys</code> lets you rotate one without cutting the agent off.",
-    "detail": "clients.&lt;id&gt;.key, altKeys" },
-  { "id": "pathkey", "group": "core", "status": "done", "star": true, "title": "A key in the URL, for clients that cannot send headers",
+    "detail": "clients.&lt;id&gt;.key, altKeys"
+  },
+  {
+    "id": "pathkey",
+    "group": "core",
+    "status": "done",
+    "star": true,
+    "title": "A key in the URL, for clients that cannot send headers",
     "body": "At least one widely used agent cannot send an Authorization header. Those clients get <code>/k/&lt;key&gt;/mcp</code> — and then the whole URL is a secret, so the gateway never writes a request path anywhere.",
-    "detail": "clients.&lt;id&gt;.keyInPath" },
-  { "id": "profiles", "group": "core", "status": "done", "title": "Profiles that filter the list and the call",
+    "detail": "clients.&lt;id&gt;.keyInPath"
+  },
+  {
+    "id": "profiles",
+    "group": "core",
+    "status": "done",
+    "title": "Profiles that filter the list and the call",
     "body": "A profile is the reusable half (what a kind of agent gets), the client is the specific half. Filtering applies to <code>tools/list</code> and is checked again on every call, so a hidden tool is not a callable one.",
-    "detail": "profiles, extends, include, exclude" },
-  { "id": "deny", "group": "core", "status": "done", "title": "Exclusions accumulate, so deny always wins",
+    "detail": "profiles, extends, include, exclude"
+  },
+  {
+    "id": "deny",
+    "group": "core",
+    "status": "done",
+    "title": "Exclusions accumulate, so deny always wins",
     "body": "Layers merge parents-first and the client last. Scalars are replaced by the most specific layer; exclusions only ever grow. A deny a later layer could undo is not a deny.",
-    "detail": "profiles + clients" },
-  { "id": "search", "group": "core", "status": "done", "title": "find_tool and call_tool, for clients that load everything",
+    "detail": "profiles + clients"
+  },
+  {
+    "id": "search",
+    "group": "core",
+    "status": "done",
+    "title": "find_tool and call_tool, for clients that load everything",
     "body": "Some clients put every tool definition in every prompt. In <code>search</code> mode the gateway shows two tools and keeps the catalogue on the server, with its own BM25 index. Tools stay callable by name: an agent that remembers one should not be punished for it.",
-    "detail": "expose: search, alwaysExpose" },
-  { "id": "override", "group": "core", "status": "done", "title": "Rewrite a tool's wording without touching its server",
+    "detail": "expose: search, alwaysExpose"
+  },
+  {
+    "id": "override",
+    "group": "core",
+    "status": "done",
+    "title": "Rewrite a tool's wording without touching its server",
     "body": "Title, description and hints are yours to change; the input schema is not, because that is the server's contract. The research on tool descriptions says concrete beats long, and a server's own wording is often neither.",
-    "detail": "upstreams.&lt;id&gt;.tools.override" },
-  { "id": "trim", "group": "core", "status": "done", "title": "Response limits with an honest note",
+    "detail": "upstreams.&lt;id&gt;.tools.override"
+  },
+  {
+    "id": "trim",
+    "group": "core",
+    "status": "done",
+    "title": "Response limits with an honest note",
     "body": "A single reply that fills the context window is worse than a trimmed one. Text is cut largest-first and the agent is told how much went and what to do instead.",
-    "detail": "limits.maxResponseBytes" },
-  { "id": "cost", "group": "core", "status": "done", "title": "The token bill, per source",
+    "detail": "limits.maxResponseBytes"
+  },
+  {
+    "id": "cost",
+    "group": "core",
+    "status": "done",
+    "title": "The token bill, per source",
     "body": "<code>jackfield tools --by-source</code> prints how many tools each upstream contributes, how many KB of definitions, and roughly how many tokens that is. You cannot decide what to cut without seeing the bill.",
-    "detail": "jackfield tools --by-source" },
-  { "id": "names", "group": "core", "status": "done", "title": "Collisions resolved, never silently dropped",
+    "detail": "jackfield tools --by-source"
+  },
+  {
+    "id": "names",
+    "group": "core",
+    "status": "done",
+    "title": "Collisions resolved, never silently dropped",
     "body": "Prefix always, only on collision, or never. Names are capped at the 128 characters MCP allows; one that would overflow is trimmed with a hash rather than truncated into a duplicate. A tool that disappears quietly is worse than one with an odd name.",
-    "detail": "defaults.prefix" },
-  { "id": "git", "group": "core", "status": "done", "star": true, "title": "The whole gateway in one file you can review",
+    "detail": "defaults.prefix"
+  },
+  {
+    "id": "git",
+    "group": "core",
+    "status": "done",
+    "star": true,
+    "title": "The whole gateway in one file you can review",
     "body": "No database, no admin panel writing state behind your back. Secrets are referenced with <code>${env:NAME}</code> or <code>${file:/path}</code>, resolved at startup, and registered for redaction so they cannot be printed. A deployment is a diff.",
-    "detail": "jackfield.yaml" },
-  { "id": "sessions", "group": "core", "status": "done", "star": true, "title": "A restart your agents recover from by themselves",
+    "detail": "jackfield.yaml"
+  },
+  {
+    "id": "sessions",
+    "group": "core",
+    "status": "done",
+    "star": true,
+    "title": "A restart your agents recover from by themselves",
     "body": "An unknown session id gets <b>404</b>, which is the protocol's signal to start a new one. Answer <b>400</b> instead — as gateways do — and clients retry a dead session until a human reconnects them.",
-    "detail": "server.sessionIdleMs" },
-  { "id": "progress", "group": "core", "status": "done", "star": true, "title": "Long calls that stay alive",
+    "detail": "server.sessionIdleMs"
+  },
+  {
+    "id": "progress",
+    "group": "core",
+    "status": "done",
+    "star": true,
+    "title": "Long calls that stay alive",
     "body": "Upstream progress is forwarded <i>on the originating call's own stream</i>. Without that detail it lands on the standalone stream, which most clients never open, so the agent watches a long call sit silent and gives up.",
-    "detail": "relatedRequestId, keepAliveMs" },
-  { "id": "failopen", "group": "core", "status": "done", "title": "One broken server does not take the rest with it",
+    "detail": "relatedRequestId, keepAliveMs"
+  },
+  {
+    "id": "failopen",
+    "group": "core",
+    "status": "done",
+    "title": "One broken server does not take the rest with it",
     "body": "An unreachable upstream is left out of the catalogue and named in the gateway's instructions, so the agent is told what is missing instead of finding a hole. Set <code>failOpen: false</code> where a silent absence would be worse.",
-    "detail": "failOpen" },
-  { "id": "lazy", "group": "core", "status": "done", "title": "Listing opens nothing",
+    "detail": "failOpen"
+  },
+  {
+    "id": "lazy",
+    "group": "core",
+    "status": "done",
+    "title": "Listing opens nothing",
     "body": "Catalogues are shared per client and cached, so <code>tools/list</code> costs nothing once warm. Only a real call connects, and only to the upstream that owns the tool: two tools used does not mean twenty servers woken.",
-    "detail": "defaults.catalogTtlMs" },
-  { "id": "notify", "group": "core", "status": "done", "title": "Find out when something sensitive runs",
+    "detail": "defaults.catalogTtlMs"
+  },
+  {
+    "id": "notify",
+    "group": "core",
+    "status": "done",
+    "title": "Find out when something sensitive runs",
     "body": "A line to ntfy or a webhook before and after any call you mark sensitive, and on every refusal. Fire-and-forget by design: a notifier that is down must never delay or fail a tool call.",
-    "detail": "notify.kind, notify.tools" },
-  { "id": "oauth", "group": "core", "status": "planned", "title": "Credentials held centrally, with OAuth upstream",
-    "body": "Token files and headers work today. What is missing is an OAuth flow towards servers that require it, with refresh and encrypted storage, so no client ever holds a credential.",
-    "detail": "planned" },
-  { "id": "webview", "group": "core", "status": "planned", "title": "A read-only view of what each client sees",
-    "body": "Planned as read-only on purpose: a panel that mutates state would move the real configuration somewhere you cannot read it in a diff.",
-    "detail": "planned" },
-
-  { "id": "forms", "group": "approvals", "status": "done", "star": true, "title": "Servers can talk back: forms, sampling, roots",
+    "detail": "notify.kind, notify.tools"
+  },
+  {
+    "id": "oauth",
+    "group": "core",
+    "status": "done",
+    "title": "OAuth upstream, with the tokens held here",
+    "body": "Log in once with <code>jackfield login &lt;upstream&gt;</code> and the gateway keeps it alive: discovery, dynamic registration, PKCE and refresh are handled for you, credentials sit in one file per server at mode 0600, and no agent ever sees a token. The gateway will not start an authorization flow by itself — one that could is one an agent could aim at a server of its choosing.",
+    "detail": "upstreams.&lt;id&gt;.oauth, jackfield login"
+  },
+  {
+    "id": "webview",
+    "group": "core",
+    "status": "done",
+    "title": "A read-only view of what a key sees",
+    "body": "<code>/status</code> shows, for the key that asks: every server and its state, the tools it ends up with, and what those definitions cost in bytes and tokens. <code>/status.json</code> for anything that has to parse it. Read-only on purpose — a panel that wrote configuration would move the state out of the file you can read in a diff.",
+    "detail": "/status, /status.json"
+  },
+  {
+    "id": "secrets",
+    "group": "core",
+    "status": "done",
+    "title": "Secrets referenced, and unprintable",
+    "body": "Any string can be <code>${env:NAME}</code> or <code>${file:/path}</code>, resolved at startup. Everything resolved that way is registered with the logger and replaced with a placeholder before a line is written, so a key cannot reach a log by accident. A missing secret stops startup instead of serving a gateway that cannot authenticate.",
+    "detail": "${env:…}, ${file:…}"
+  },
+  {
+    "id": "keycompare",
+    "group": "core",
+    "status": "done",
+    "title": "Keys compared whole, in constant time",
+    "body": "Lookups walk the entire table rather than returning early, so timing says nothing about which keys exist. <code>altKeys</code> lets a key be rotated without cutting an agent off mid-session.",
+    "detail": "clients.&lt;id&gt;.altKeys"
+  },
+  {
+    "id": "forms",
+    "group": "approvals",
+    "status": "done",
+    "star": true,
+    "title": "Servers can talk back: forms, sampling, roots",
     "body": "MCP lets a server ask the agent for something mid-call — a login code, a confirmation, a completion. Jackfield bridges those requests to the agent that made the call, and when the agent cannot answer it says so instead of hanging. This is the half most gateways drop.",
-    "detail": "elicitation, sampling, roots" },
-  { "id": "perms", "group": "approvals", "status": "done", "title": "Allow, ask, or deny — per tool",
+    "detail": "elicitation, sampling, roots"
+  },
+  {
+    "id": "perms",
+    "group": "approvals",
+    "status": "done",
+    "title": "Allow, ask, or deny — per tool",
     "body": "<code>ask</code> puts the question to the user through an MCP form before the call runs. A client that cannot show forms is refused rather than waved through: an approval the agent grants itself is not an approval. Global rules are a floor; a client can tighten, never loosen.",
-    "detail": "permissions[].action" },
-  { "id": "outside", "group": "approvals", "status": "planned", "star": true, "title": "Approve from outside the conversation",
-    "body": "A link to a page of your own, with a passkey and a capture of what is about to happen, so the approval never lives inside the thing being approved. Needs a store of pending approvals; not started.",
-    "detail": "planned" },
-
-  { "id": "stdio", "group": "executor", "status": "done", "title": "Child-process servers, wherever they can run",
+    "detail": "permissions[].action"
+  },
+  {
+    "id": "outside",
+    "group": "approvals",
+    "status": "done",
+    "star": true,
+    "title": "Approve from outside the conversation",
+    "body": "<code>action: ask</code> with <code>via: link</code> mints a one-time URL, hands it to your notifier and to nobody else, and holds the call — sending progress so it does not time out — until a person opens it and decides. The agent never learns the link, so it cannot approve itself, and this is the route that works when nobody is watching the agent's window. Optional passphrase on the page.",
+    "detail": "permissions[].via: link"
+  },
+  {
+    "id": "stdio",
+    "group": "executor",
+    "status": "done",
+    "title": "Child-process servers, wherever they can run",
     "body": "Any stdio MCP server, either in the gateway itself or on an executor. The same upstream definition works in both places, so moving one is a two-line edit and not a migration.",
-    "detail": "transport: stdio | executor" },
-  { "id": "split", "group": "executor", "status": "done", "star": true, "title": "A core that cannot run processes, and a machine that can",
+    "detail": "transport: stdio | executor"
+  },
+  {
+    "id": "split",
+    "group": "executor",
+    "status": "done",
+    "star": true,
+    "title": "A core that cannot run processes, and a machine that can",
     "body": "A serverless function cannot keep a session, start a child process, or hold a stream open for an hour. Instead of letting the host decide what your tools may be, the executor runs on a machine you own and serves exactly those upstreams behind one token.",
-    "detail": "jackfield-executor" },
-  { "id": "cli", "group": "executor", "status": "done", "star": true, "title": "A command line as one tool, instead of a hundred",
+    "detail": "jackfield-executor"
+  },
+  {
+    "id": "cli",
+    "group": "executor",
+    "status": "done",
+    "star": true,
+    "title": "A command line as one tool, instead of a hundred",
     "body": "A service whose MCP server defines 120 tools, used twice a month, costs its definitions in every prompt. Its command line costs one. No shell ever — the program is spawned with an argument array — plus a fixed executable, an optional subcommand allow-list, denied arguments, a time limit and an output cap.",
-    "detail": "transport: cli" },
-  { "id": "terminal", "group": "executor", "status": "partial", "title": "A terminal with permissions per command",
-    "body": "Covered on the machine the executor runs on, by the same <code>cli</code> upstream: named commands, no shell, no free root. What is missing is reaching several machines from one executor.",
-    "detail": "partial" },
-  { "id": "browser", "group": "executor", "status": "planned", "title": "A browser with saved sessions",
-    "body": "Today a browser-automation server is just another HTTP upstream — and the form bridge is what makes it work through a gateway at all. Hosting one inside the executor, with stored sessions and your own egress address, is not started.",
-    "detail": "planned" },
-  { "id": "tunnel", "group": "executor", "status": "planned", "title": "An executor that dials out, with no port to open",
-    "body": "Today the core calls the executor, which listens on a private network. Reversing that — the executor opens the connection — would remove the last inbound port. Designed, not built.",
-    "detail": "planned" },
-
-  { "id": "process", "group": "run", "status": "done", "title": "A plain process",
+    "detail": "transport: cli"
+  },
+  {
+    "id": "terminal",
+    "group": "executor",
+    "status": "done",
+    "title": "A terminal on your machines, one command at a time",
+    "body": "An executor per machine, each serving named commands rather than a shell: fixed executables, an allow-list of subcommands, denied arguments, time and output caps. Several machines means several executors, which the gateway treats as separate sources.",
+    "detail": "transport: cli"
+  },
+  {
+    "id": "browser",
+    "group": "executor",
+    "status": "done",
+    "title": "A browser with its sessions kept",
+    "body": "Run a browser MCP server on the executor with its profile directory on disk, and logins survive restarts. It matters that this goes through a gateway that forwards forms: a page asking for a login code reaches whoever is driving the agent, which is exactly the case a tools-only proxy breaks. Recipe in <code>examples/executor.yaml</code>.",
+    "detail": "examples/executor.yaml"
+  },
+  {
+    "id": "tunnel",
+    "group": "executor",
+    "status": "done",
+    "title": "An executor that dials out, with no port to open",
+    "body": "Set <code>attach: true</code> and the executor opens one stream to the gateway instead of listening. A laptop behind NAT or a box with no inbound rules can then serve upstreams to a gateway anywhere, reconnecting on its own with backoff. Responses stream back chunk by chunk, so a server behind the tunnel can still hold a stream open and ask the agent something through it.",
+    "detail": "executors.&lt;id&gt;.attach, --core"
+  },
+  {
+    "id": "process",
+    "group": "run",
+    "status": "done",
+    "title": "A plain process",
     "body": "<code>jackfield serve</code>. The default, and the only one where everything works: sessions, forms, streams that stay open, child processes.",
-    "detail": "jackfield serve" },
-  { "id": "systemd", "group": "run", "status": "done", "title": "systemd, hardened",
+    "detail": "jackfield serve"
+  },
+  {
+    "id": "systemd",
+    "group": "run",
+    "status": "done",
+    "title": "systemd, hardened",
     "body": "A unit file with no new privileges, a read-only system, a single read-only secrets directory, and a restricted set of address families.",
-    "detail": "deploy/systemd" },
-  { "id": "docker", "group": "run", "status": "done", "title": "Docker",
+    "detail": "deploy/systemd"
+  },
+  {
+    "id": "docker",
+    "group": "run",
+    "status": "done",
+    "title": "Docker",
     "body": "A multi-stage image and a compose file with a health check. Mount secrets as files rather than passing them as environment variables.",
-    "detail": "deploy/docker" },
-  { "id": "nixos", "group": "run", "status": "done", "title": "NixOS, as a module",
+    "detail": "deploy/docker"
+  },
+  {
+    "id": "nixos",
+    "group": "run",
+    "status": "done",
+    "title": "NixOS, as a module",
     "body": "<code>services.jackfield</code> with options, plus the executor as a second unit. The configuration goes to the Nix store, which is world-readable, so every secret is a file reference and the module creates that directory at mode 0700.",
-    "detail": "deploy/nix" },
-  { "id": "serverless", "group": "run", "status": "done", "title": "Serverless, as one option among several",
+    "detail": "deploy/nix"
+  },
+  {
+    "id": "serverless",
+    "group": "run",
+    "status": "done",
+    "title": "Serverless, as one option among several",
     "body": "The HTTP layer is written against Web <code>Request</code>/<code>Response</code>, so a function is five lines of adapter. It needs <code>stateless: true</code>, and that costs sessions, forms and child processes — which is exactly what the executor is for. The platform specifics are written but not yet verified on a live deployment.",
-    "detail": "stateless: true" },
-  { "id": "tests", "group": "run", "status": "done", "title": "53 tests, on the parts that matter",
-    "body": "Aggregation, name collisions, profiles, search mode, overrides, trimming, permissions, notifications, forms, progress, sessions, stateless mode, the command-line sandbox, and a split core/executor setup end to end.",
-    "detail": "npm test" },
-
-  { "id": "codemode", "group": "later", "status": "planned", "title": "Code mode, sandboxed on the executor",
-    "body": "Let the model write a short script that calls the tools and return only the result. The published numbers come from vendors, so this waits until there is a case that needs it." },
-  { "id": "embeddings", "group": "later", "status": "planned", "title": "Search by meaning, locally",
-    "body": "BM25 is cheap and has no model to host. Local embeddings would catch paraphrases it misses." },
-  { "id": "multiuser", "group": "later", "status": "planned", "title": "More than one person",
-    "body": "Separate people, not just separate agents, with no shared view and no shared keys." },
-  { "id": "catalogue", "group": "later", "status": "planned", "title": "A catalogue you install from",
-    "body": "Known servers, added with one command — without the configuration ceasing to be a file you can read." }
+    "detail": "stateless: true"
+  },
+  {
+    "id": "tests",
+    "group": "run",
+    "status": "done",
+    "title": "74 tests, on the parts that matter",
+    "body": "Aggregation, name collisions, profiles, search mode, overrides, trimming, permission rules, notifications, forms, out-of-band approvals, OAuth against a full authorization server, progress, sessions, stateless mode, the command-line sandbox, the read-only view, and a split core/executor setup over both a direct connection and a dial-in tunnel.",
+    "detail": "npm test"
+  },
+  {
+    "id": "healthz",
+    "group": "run",
+    "status": "done",
+    "title": "A health check that says something",
+    "body": "<code>/healthz</code> needs no key and returns the state of every server, the number of open sessions, waiting approvals and attached executors — enough for a probe to be worth having.",
+    "detail": "/healthz"
+  },
+  {
+    "id": "cliinspect",
+    "group": "run",
+    "status": "done",
+    "title": "Commands that answer the real questions",
+    "body": "<code>check</code> connects to everything and reports what broke. <code>tools --by-source</code> itemises the token bill. <code>routes</code> prints what to paste into each agent. <code>login</code> and <code>logout</code> handle OAuth. <code>keygen</code> makes keys on a box with no openssl.",
+    "detail": "jackfield --help"
+  },
+  {
+    "id": "codemode",
+    "group": "later",
+    "status": "planned",
+    "title": "Code mode, sandboxed on the executor",
+    "body": "Let the model write a short script that calls several tools and return only the result. The published savings come from vendors, so this waits for a case that needs it."
+  },
+  {
+    "id": "embeddings",
+    "group": "later",
+    "status": "planned",
+    "title": "Search by meaning, locally",
+    "body": "BM25 is cheap and needs no model. Local embeddings would catch paraphrases it misses, at the cost of something to host."
+  },
+  {
+    "id": "multiuser",
+    "group": "later",
+    "status": "planned",
+    "title": "More than one person",
+    "body": "Separate people, not just separate agents: no shared view, no shared keys, no shared process."
+  },
+  {
+    "id": "catalogue",
+    "group": "later",
+    "status": "planned",
+    "title": "A catalogue you install from",
+    "body": "Known servers added with one command, without the configuration ceasing to be a file you can read."
+  }
 ]

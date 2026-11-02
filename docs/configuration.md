@@ -98,6 +98,36 @@ upstreams:
 `hostHeader` exists because some MCP servers reject any `Host` they did not
 expect with a 403, and a gateway forwards the agent's `Host` by default.
 
+#### OAuth instead of a static token
+
+```yaml
+upstreams:
+  vault:
+    transport: http
+    url: https://vault.example.com/mcp
+    oauth:
+      scope: "read write"
+      # Only when the server does not do dynamic client registration:
+      # clientId: abc123
+      # clientSecret: ${file:secrets/vault.secret}
+```
+
+Then, once, as the operator:
+
+```bash
+jackfield login vault     # opens a browser, catches the callback
+jackfield login vault --manual   # prints the URL, takes the code by hand
+jackfield logout vault
+```
+
+Discovery, dynamic registration, PKCE and refresh are the SDK's job; Jackfield
+stores the result in `auth.storeDir`, one file per upstream at mode 0600, and
+refreshes it from then on. No agent ever sees a token.
+
+The gateway will **not** start an authorization flow on its own. A gateway that
+did could be pointed at an authorization server of an agent's choosing, so
+logging in stays a command you run.
+
 ### `transport: sse`
 
 The older transport. Same keys minus `hostHeader`.
@@ -161,9 +191,15 @@ back as a tool error the agent can read, never as a crash.
 
 ```yaml
 executors:
+  # The gateway calls the executor: it has to be reachable.
   home:
     url: http://100.64.0.2:8795
     token: ${file:secrets/executor.token}
+
+  # Or the executor calls the gateway: nothing has to reach it.
+  laptop:
+    attach: true
+    token: ${file:secrets/laptop.token}
 
 upstreams:
   browser:
@@ -171,6 +207,13 @@ upstreams:
     executor: home
     remote: browser          # id on the executor; defaults to this upstream's id
 ```
+
+## `auth`
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `storeDir` | `./.jackfield/auth` | Where OAuth credentials live, mode 0600. |
+| `redirectUrl` | `http://127.0.0.1:7777/callback` | Redirect URI registered with authorization servers; the loopback listener `jackfield login` opens. |
 
 ## `permissions`
 
@@ -194,6 +237,40 @@ clients:
 `allow`, `ask`, `deny`. The client's rules and the global ones are both
 evaluated, and **the stricter answer wins** — the global list is a floor, not a
 default, so a client can tighten and never loosen.
+
+### Where `ask` asks
+
+```yaml
+permissions:
+  - tools: ["*.delete_*"]
+    action: ask
+    via: link            # client (default) | link | any
+    timeoutMs: 600000
+```
+
+- **`client`** renders an MCP form in the agent's own interface. Right when a
+  person is watching that window.
+- **`link`** mints a one-time URL, sends it to your notifier and to nobody
+  else, and holds the call — emitting progress so it does not time out — until
+  someone opens it and decides. The agent never learns the URL, so it cannot
+  approve itself, and this is the only route that works for an agent nobody is
+  watching.
+- **`any`** uses the client form when the client can show one, the link when it
+  cannot.
+
+A `via` other than `client` needs `approvals.publicUrl` and a `notify` block;
+without them the configuration is refused rather than silently asking no one.
+
+## `approvals`
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `publicUrl` | — | Base URL of the gateway as *you* reach it. Required for `via: link`. |
+| `timeoutMs` | `600000` | How long a link stays open before the call is refused. |
+| `passphrase` | — | A secret the page asks for on top of holding the link. |
+
+The page lives at `/approve/<token>`, takes no client key — the token is the
+credential — works once, and is never logged with the token in it.
 
 `ask` puts the question to the user through an MCP elicitation form before the
 call runs, with the tool name and its arguments. A client that cannot show
@@ -306,4 +383,18 @@ Under `server.basePath`:
 | `ALL /mcp` | client identified by `Authorization: Bearer <key>` |
 | `ALL /k/<key>/mcp` | clients with `keyInPath: true` |
 | `ALL /c/<client>/mcp` | the named client; the key must still match it |
+| `GET /status`, `/status.json` | a client key; a read-only view of what that key sees |
 | `GET /healthz` | anyone, when `server.health` is on |
+| `GET`/`POST /approve/<token>` | whoever holds the link; no client key |
+| `GET /executor/<name>/attach` | an executor that dials in, with its own token |
+| `POST /executor/<name>/reply` | the same executor, carrying answers back |
+
+## `/status`
+
+A read-only page showing, for the key that asks: every server and its state,
+the tools that key ends up with, and what those definitions cost in bytes and
+rough tokens. `/status.json` returns the same as JSON.
+
+Read-only on purpose. A panel that wrote configuration would move the real
+state out of the file you can read in a diff. Turn it off with
+`server.status: false`.

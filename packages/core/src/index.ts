@@ -11,6 +11,9 @@ export type {
     Config,
     RawConfig,
     PermissionRule,
+    ApprovalsConfig,
+    AuthConfig,
+    OAuthUpstreamConfig,
     NotifyConfig,
     CliCommandConfig,
     UpstreamConfig,
@@ -33,17 +36,27 @@ export { resolveSelection, resolveUpstreamSelectors } from './gateway/selection.
 export { decide, decideLayered, describeCall } from './gateway/permissions.js';
 export type { PermissionAction, PermissionDecision } from './gateway/permissions.js';
 export { Notifier } from './gateway/notify.js';
+export { ApprovalStore, renderApprovalPage, renderApprovalMissing } from './gateway/approvals.js';
+export type { Approval, ApprovalState, ApprovalRequest, PendingApproval } from './gateway/approvals.js';
 export type { NotifyEvent, NotifyPayload } from './gateway/notify.js';
 export type { Selection } from './gateway/selection.js';
 export { findTools, metaToolDefinitions, metaToolNames, FIND_TOOL, CALL_TOOL } from './gateway/toolsearch.js';
 
 export { UpstreamConnection } from './upstream/connection.js';
+export { AuthStore, JackfieldOAuthProvider } from './upstream/oauth.js';
+export type { StoredAuth } from './upstream/oauth.js';
+export { login, logout, authStatus } from './upstream/login.js';
+export type { LoginOptions } from './upstream/login.js';
 export { UpstreamPool } from './upstream/pool.js';
 export type { CallContext, DownstreamBridge, UpstreamStatus, UpstreamState, UpstreamTool } from './upstream/types.js';
 
 export { Router } from './http/router.js';
 export type { RouterOptions } from './http/router.js';
 export { KeyRegistry, constantTimeEquals } from './http/auth.js';
+export { TunnelHub, tokenMatches } from './http/tunnel.js';
+export { buildStatusView, renderStatusPage } from './http/status.js';
+export type { StatusView } from './http/status.js';
+export type { ReplyFrame, TunnelHubOptions } from './http/tunnel.js';
 export type { Principal } from './http/auth.js';
 
 export { serve, toWebRequest, writeWebResponse } from './runtime/node.js';

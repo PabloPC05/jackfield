@@ -132,6 +132,15 @@ function validateReferences(config: Config, where?: string): void {
     const profileIds = new Set(Object.keys(config.profiles));
     const executorIds = new Set(Object.keys(config.executors));
 
+    for (const [id, executor] of Object.entries(config.executors)) {
+        if (!executor.url && !executor.attach) {
+            problems.push(`executors.${id}: needs a url, or attach: true so it dials in`);
+        }
+        if (executor.url && executor.attach) {
+            problems.push(`executors.${id}: has both a url and attach: true; pick one`);
+        }
+    }
+
     for (const [id, upstream] of Object.entries(config.upstreams)) {
         if (upstream.transport === 'executor' && !executorIds.has(upstream.executor)) {
             problems.push(`upstreams.${id}.executor: no executor named "${upstream.executor}"`);
@@ -147,6 +156,25 @@ function validateReferences(config: Config, where?: string): void {
             if (!isKnownSelector(selector, upstreamIds)) {
                 problems.push(`profiles.${id}.upstreams: "${selector}" matches no upstream`);
             }
+        }
+    }
+
+    const linkRules = [
+        ...config.permissions.map((rule, index) => ({ rule, where: `permissions[${index}]` })),
+        ...Object.entries(config.clients).flatMap(([id, client]) =>
+            (client.permissions ?? []).map((rule, index) => ({ rule, where: `clients.${id}.permissions[${index}]` }))
+        ),
+        ...Object.entries(config.profiles).flatMap(([id, profile]) =>
+            (profile.permissions ?? []).map((rule, index) => ({ rule, where: `profiles.${id}.permissions[${index}]` }))
+        )
+    ].filter(entry => entry.rule.action === 'ask' && entry.rule.via !== 'client');
+
+    for (const entry of linkRules) {
+        if (!config.approvals.publicUrl) {
+            problems.push(`${entry.where}: via "${entry.rule.via}" needs approvals.publicUrl, or nobody can open the link`);
+        }
+        if (!config.notify) {
+            problems.push(`${entry.where}: via "${entry.rule.via}" needs a notify block, or the link reaches no one`);
         }
     }
 

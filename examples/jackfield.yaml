@@ -50,6 +50,18 @@ profiles:
     upstreams: ["*"]
     # `exclude` accumulates across layers, so *.add stays out. Deny always wins.
 
+# A machine of yours that dials in: no inbound port, no port forward, no
+# private network. See examples/executor.yaml for the other side.
+# executors:
+#   home:
+#     attach: true
+#     token: ${file:secrets/executor.token}
+#
+# upstreams:
+#   browser:
+#     transport: executor
+#     executor: home
+
 clients:
   laptop:
     description: the agent I run on my machine

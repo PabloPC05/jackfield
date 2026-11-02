@@ -97,6 +97,26 @@ const upstreamCommon = {
         .default({ tools: true, resources: false, prompts: false })
 };
 
+
+/**
+ * OAuth towards an upstream. Its presence turns it on.
+ *
+ * Tokens live in `auth.storeDir`, mode 0600, and are refreshed by the gateway;
+ * no agent ever sees one. Logging in is an operator action — `jackfield login
+ * <upstream>` — because a gateway that could start an authorization flow on
+ * demand is a gateway an agent could aim at an authorization server of its
+ * choosing.
+ */
+const oauthSchema = z.object({
+    /** Scopes to ask for. Omit to take the server's default. */
+    scope: z.string().max(500).optional(),
+    /** Set only when the server does not do dynamic client registration. */
+    clientId: z.string().optional(),
+    clientSecret: z.string().optional(),
+    /** Name shown on the consent screen. */
+    clientName: z.string().max(100).optional()
+});
+
 const httpUpstream = z.object({
     transport: z.literal('http'),
     url: z.string().url(),
@@ -108,6 +128,8 @@ const httpUpstream = z.object({
      * it (some reject anything but `127.0.0.1:<port>` with a 403).
      */
     hostHeader: z.string().optional(),
+    /** Log in with OAuth instead of a static token. */
+    oauth: oauthSchema.optional(),
     ...upstreamCommon
 });
 
@@ -116,6 +138,7 @@ const sseUpstream = z.object({
     url: z.string().url(),
     headers: headersSchema.optional(),
     token: z.string().optional(),
+    oauth: oauthSchema.optional(),
     ...upstreamCommon
 });
 
@@ -189,8 +212,17 @@ export const upstreamSchema = z.discriminatedUnion('transport', [
 ]);
 
 export const executorSchema = z.object({
-    url: z.string().url(),
-    token: z.string().min(1),
+    /**
+     * Where the executor listens. Leave it out and set `attach: true` instead,
+     * and the executor dials the gateway: no inbound port on its side at all.
+     */
+    url: z.string().url().optional(),
+    /**
+     * The executor opens the connection and the gateway pushes requests down
+     * it. For a machine behind NAT, or one you would rather not expose.
+     */
+    attach: z.boolean().default(false),
+    token: z.string().min(16),
     description: z.string().max(500).optional()
 });
 
@@ -207,7 +239,19 @@ export const permissionRuleSchema = z.object({
     tools: z.array(toolGlob).min(1),
     action: z.enum(['allow', 'ask', 'deny']),
     /** Shown to the user when asking, and to the agent when denying. */
-    reason: z.string().max(500).optional()
+    reason: z.string().max(500).optional(),
+    /**
+     * Where to ask.
+     *
+     * - `client` (default): a form in the agent's own client.
+     * - `link`: a one-time link sent to your notifier, decided on a page of
+     *   your own. The agent never sees the link, so it cannot approve itself,
+     *   and it works for an agent nobody is watching.
+     * - `any`: the client form when the client can show one, the link if not.
+     */
+    via: z.enum(['client', 'link', 'any']).default('client'),
+    /** How long to wait for this rule's answer. Defaults to `approvals.timeoutMs`. */
+    timeoutMs: z.number().int().positive().max(3_600_000).optional()
 });
 
 /** Selection shared by profiles and clients. */
@@ -284,6 +328,11 @@ export const configSchema = z.object({
             /** Answer `/healthz` without a key. */
             health: z.boolean().default(true),
             /**
+             * Serve `/status`: a read-only page showing what a key actually
+             * sees, and what it costs. Needs that key, and writes nothing.
+             */
+            status: z.boolean().default(true),
+            /**
              * Send permissive CORS headers. Off by default: agents call from a
              * server, and an open gateway in a browser is a gift to any page
              * the user has open.
@@ -344,6 +393,38 @@ export const configSchema = z.object({
     /** Permission rules applied to every client, after its own. */
     permissions: z.array(permissionRuleSchema).default([]),
 
+    /** Where OAuth credentials live, and what redirect URI to register. */
+    auth: z
+        .object({
+            /** Directory for the per-upstream credential files (mode 0600). */
+            storeDir: z.string().default('./.jackfield/auth'),
+            /**
+             * Redirect URI registered with the authorization servers. The
+             * default is the loopback listener `jackfield login` opens, which
+             * is what most servers expect from a command-line client.
+             */
+            redirectUrl: z.string().url().default('http://127.0.0.1:7777/callback')
+        })
+        .default({ storeDir: './.jackfield/auth', redirectUrl: 'http://127.0.0.1:7777/callback' }),
+
+    /** Settings for approvals decided outside the agent's conversation. */
+    approvals: z
+        .object({
+            /**
+             * Public base URL of the gateway as *you* would reach it, used to
+             * build approval links. Required for `via: link`.
+             */
+            publicUrl: z.string().url().optional(),
+            /** How long a link stays open before the call is refused. */
+            timeoutMs: z.number().int().positive().max(3_600_000).default(600_000),
+            /**
+             * A secret the page asks for on top of holding the link. Worth it
+             * if the link travels through anything you do not fully trust.
+             */
+            passphrase: z.string().min(4).optional()
+        })
+        .default({ timeoutMs: 600_000 }),
+
     executors: z.record(identifier, executorSchema).default({}),
     upstreams: z.record(identifier, upstreamSchema).default({}),
     profiles: z.record(identifier, profileSchema).default({}),
@@ -357,6 +438,9 @@ export type ExecutorConfig = z.output<typeof executorSchema>;
 export type ProfileConfig = z.output<typeof profileSchema>;
 export type ClientConfig = z.output<typeof clientSchema>;
 export type PermissionRule = z.output<typeof permissionRuleSchema>;
+export type ApprovalsConfig = Config['approvals'];
+export type AuthConfig = Config['auth'];
+export type OAuthUpstreamConfig = z.output<typeof oauthSchema>;
 export type NotifyConfig = NonNullable<Config['notify']>;
 export type CliCommandConfig = z.output<typeof cliCommandSchema>;
 export type ServerConfig = Config['server'];

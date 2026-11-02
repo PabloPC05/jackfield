@@ -1,4 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
     CallToolRequestSchema,
     ErrorCode,
@@ -19,6 +20,7 @@ import { UpstreamPool } from '../upstream/pool.js';
 import type { CallContext, DownstreamBridge } from '../upstream/types.js';
 import { errorMessage } from '../util/errors.js';
 import type { Logger } from '../util/logger.js';
+import type { ApprovalStore } from './approvals.js';
 import type { Catalog } from './catalog.js';
 import { visibleTools } from './catalog.js';
 import type { Selection } from './selection.js';
@@ -35,6 +37,9 @@ export interface SessionOptions {
     getCatalog: (options?: { refresh?: boolean }) => Promise<Catalog>;
     instructions?: string;
     notifier: Notifier;
+    approvals: ApprovalStore;
+    /** A `fetch` that reaches an executor which dialled in. */
+    tunnelFetch?: (executor: string) => FetchLike;
 }
 
 /**
@@ -64,6 +69,7 @@ export class GatewaySession {
 
         this.pool = new UpstreamPool({
             config: options.config,
+            ...(options.tunnelFetch ? { tunnelFetch: options.tunnelFetch } : {}),
             upstreamIds: options.selection.upstreamIds,
             logger: this.logger,
             bridge: this.createBridge()
@@ -226,7 +232,7 @@ export class GatewaySession {
         }
 
         if (decision.action === 'ask') {
-            const verdict = await this.confirm(name, args, decision.reason);
+            const verdict = await this.approve(name, args, exposed.upstreamId, decision, context);
             if (!verdict.allowed) {
                 notifier.send({
                     event: 'denied',
@@ -300,29 +306,116 @@ export class GatewaySession {
     }
 
     /**
-     * Asks the agent's user to approve a call, through an MCP form.
+     * Gets a human to approve a call.
      *
-     * A client that cannot show forms is refused rather than waved through: an
-     * approval the agent grants itself is not an approval, and silently
-     * allowing the call would make the rule decorative. The refusal says what
-     * the client would need, so the cause is visible.
+     * Two routes, chosen by the rule. `client` renders a form in the agent's
+     * own client, which is right when a person is watching it. `link` mints a
+     * one-time URL, hands it to the notifier and to nobody else, and waits —
+     * which is the only one that holds when the agent is unattended, or when
+     * its client cannot show forms at all.
+     *
+     * Either way the answer comes from a person. An approval the agent can
+     * grant itself is not an approval, so a client that cannot ask is refused
+     * rather than waved through.
      */
-    private async confirm(toolName: string, args: unknown, reason?: string): Promise<{ allowed: boolean; why: string }> {
-        const bridge = this.pool.bridge;
-        if (!bridge.capabilities.elicitation) {
-            return {
-                allowed: false,
-                why:
-                    `${toolName} needs the user's approval, and this client cannot show a confirmation form, ` +
-                    `so the gateway refused it. Run it from a client that supports MCP elicitation, or change the rule.`
-            };
+    private async approve(
+        toolName: string,
+        args: unknown,
+        upstreamId: string,
+        decision: { action: string; reason?: string; via?: string; timeoutMs?: number },
+        context: CallContext
+    ): Promise<{ allowed: boolean; why: string }> {
+        const canAskClient = this.pool.bridge.capabilities.elicitation;
+        const via = decision.via ?? 'client';
+        const useLink = via === 'link' || (via === 'any' && !canAskClient);
+
+        if (useLink) return this.approveByLink(toolName, args, upstreamId, decision, context);
+        if (canAskClient) return this.confirmInClient(toolName, args, decision.reason);
+
+        return {
+            allowed: false,
+            why:
+                `${toolName} needs the user's approval, and this client cannot show a confirmation form, ` +
+                `so the gateway refused it. Use a client that supports MCP elicitation, or set ` +
+                `via: link on the rule so approval happens outside the conversation.`
+        };
+    }
+
+    /** The link route: the agent never sees the URL, only that it was sent. */
+    private async approveByLink(
+        toolName: string,
+        args: unknown,
+        upstreamId: string,
+        decision: { reason?: string; timeoutMs?: number },
+        context: CallContext
+    ): Promise<{ allowed: boolean; why: string }> {
+        const { approvals, notifier } = this.options;
+        if (!approvals.configured) {
+            return { allowed: false, why: `${toolName} needs approval out of band, but no approval URL is configured.` };
         }
 
+        const pending = approvals.create({
+            client: this.options.clientId,
+            tool: toolName,
+            upstream: upstreamId,
+            summary: describeCall(toolName, args, 1200),
+            ...(decision.reason ? { reason: decision.reason } : {}),
+            ...(decision.timeoutMs ? { timeoutMs: decision.timeoutMs } : {})
+        });
+
+        notifier.send({
+            event: 'approval',
+            client: this.options.clientId,
+            tool: toolName,
+            upstream: upstreamId,
+            detail: decision.reason ?? 'waiting for your approval',
+            link: pending.url
+        });
+
+        // Tell the agent what is happening, and keep its call alive while a
+        // person makes up their mind: a quiet stream is a cut stream.
+        const heartbeat = this.startWaitingHeartbeat(pending.approval.expiresAt, context);
+        try {
+            const state = await pending.settled;
+            if (state === 'approved') return { allowed: true, why: 'approved' };
+            if (state === 'expired') {
+                return {
+                    allowed: false,
+                    why: `${toolName} was not approved in time, so the gateway refused it. Ask again if it still matters.`
+                };
+            }
+            return { allowed: false, why: `${toolName} was rejected by the user.` };
+        } finally {
+            clearInterval(heartbeat);
+        }
+    }
+
+    private startWaitingHeartbeat(expiresAt: number, context: CallContext): ReturnType<typeof setInterval> {
+        const send = (message: string) => {
+            if (context.progressToken === undefined) return;
+            this.pool.bridge.progress({
+                token: context.progressToken,
+                progress: Math.max(0, Math.round((Date.now() - (expiresAt - 600_000)) / 1000)),
+                message,
+                ...(context.relatedRequestId !== undefined ? { relatedRequestId: context.relatedRequestId } : {})
+            });
+        };
+        send('waiting for the user to approve this call');
+        const timer = setInterval(() => {
+            const left = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+            send(`still waiting for approval, ${left} s left`);
+        }, 15_000);
+        timer.unref?.();
+        return timer;
+    }
+
+    /** The in-client route: an MCP form in the agent's own interface. */
+    private async confirmInClient(toolName: string, args: unknown, reason?: string): Promise<{ allowed: boolean; why: string }> {
         const message =
             `Approve this call?\n\n${describeCall(toolName, args)}` + (reason ? `\n\nWhy you are being asked: ${reason}` : '');
 
         try {
-            const answer = await bridge.elicitInput({
+            const answer = await this.pool.bridge.elicitInput({
                 message,
                 requestedSchema: {
                     type: 'object',
