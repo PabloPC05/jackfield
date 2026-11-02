@@ -63,9 +63,9 @@
     "id": "busqueda",
     "group": "ahorro",
     "status": "done",
-    "title": "Quinientas herramientas, o dos",
-    "body": "Si tu cliente carga todas las definiciones en cada mensaje, puedes darle solo dos: una para buscar la herramienta que necesita y otra para usarla. El catálogo se queda en el servidor.",
-    "detail": "Las que ya se sepa de memoria las puede seguir llamando por su nombre."
+    "title": "Enseñar dos herramientas en vez de quinientas",
+    "body": "Para clientes que se cargan todas las descripciones en cada mensaje: les das una herramienta para buscar y otra para usar lo que encuentren. Claude Code y claude.ai ya hacen esto por su cuenta, así que con ellos no hace falta; con los que no lo hacen, es la diferencia entre caber y no caber.",
+    "detail": "Lo mismo que hacen ToolHive, Bifrost o MCPHub, cada uno a su manera."
   },
   {
     "id": "cli",
@@ -81,8 +81,8 @@
     "group": "ahorro",
     "status": "done",
     "title": "Una respuesta enorme no te arruina la conversación",
-    "body": "Si un servidor contesta con medio megabyte, se recorta y se le dice al agente cuánto se ha quitado y que pida menos. Mejor eso que perder el hilo entero.",
-    "detail": "El límite lo pones tú, global o por servidor."
+    "body": "Si un servidor te devuelve medio megabyte de golpe, el agente se queda sin memoria y pierde el hilo de lo que estabais haciendo. Esto corta y le avisa de que pida menos. Los servidores bien hechos ya parten sus respuestas solos; esto es la red por si alguno no lo hace.",
+    "detail": "Invisible mientras no haga falta."
   },
   {
     "id": "descripciones",
@@ -112,9 +112,9 @@
     "id": "credenciales",
     "group": "mando",
     "status": "done",
-    "title": "Tus contraseñas se quedan aquí",
-    "body": "Entras una vez en los servicios que usan OAuth y la pasarela mantiene la sesión viva sola. Ningún agente llega a ver un token.",
-    "detail": "Guardados en tu máquina, en un archivo por servicio que solo tú puedes leer."
+    "title": "Entrar en los servicios sin darle la contraseña a nadie",
+    "body": "Algunos servidores no te dan una clave para pegar: te mandan a una página a iniciar sesión, como cuando pulsas «entrar con Google». Jackfield entra por ti una vez y mantiene el permiso vivo. Ningún agente llega a ver nada.",
+    "detail": "Es para entrar en los servicios, no para entrar en Jackfield."
   },
   {
     "id": "movil",
@@ -176,14 +176,6 @@
     "detail": "Lo que desaparece sin avisar es lo que tardas semanas en notar."
   },
   {
-    "id": "vista",
-    "group": "fiable",
-    "status": "done",
-    "title": "Una página para ver qué ve cada clave",
-    "body": "Abres una dirección y ves el estado de cada servidor, las herramientas que acaba viendo ese agente y lo que cuestan.",
-    "detail": "Solo mira: lo que manda sigue siendo el archivo."
-  },
-  {
     "id": "maquina",
     "group": "donde",
     "status": "done",
@@ -197,9 +189,9 @@
     "group": "donde",
     "status": "done",
     "star": true,
-    "title": "Tu máquina no abre ni un puerto",
-    "body": "Es ella la que llama a la pasarela y mantiene la línea abierta. Vale para un portátil detrás del router de casa, sin reenvíos ni VPN. Si se cae, vuelve sola.",
-    "detail": "Y por esa misma línea sigue pudiendo preguntarte cosas."
+    "title": "Si la pasarela vive fuera, tu ordenador no abre nada",
+    "body": "Caso concreto: pones Jackfield en la nube y tu navegador y tu terminal siguen en casa. Normalmente tu ordenador tendría que dejar una puerta abierta para que la nube entre. Aquí llama él. Si todo vive en tu servidor, esto te sobra.",
+    "detail": "Y si se cae la línea, vuelve a llamar solo."
   },
   {
     "id": "navegador",

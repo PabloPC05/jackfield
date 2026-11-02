@@ -55,13 +55,11 @@ export { Router } from './http/router.js';
 export type { RouterOptions } from './http/router.js';
 export { KeyRegistry, constantTimeEquals } from './http/auth.js';
 export { TunnelHub, tokenMatches } from './http/tunnel.js';
-export { buildStatusView, renderStatusPage } from './http/status.js';
 export { PanelMount } from './panel/mount.js';
 export { PanelApi } from './panel/api.js';
 export type { PanelState, ServerView, EndpointView } from './panel/api.js';
 export { ConfigWriter, newKey } from './panel/writer.js';
 export { renderPanel } from './panel/ui.js';
-export type { StatusView } from './http/status.js';
 export type { ReplyFrame, TunnelHubOptions } from './http/tunnel.js';
 export type { Principal } from './http/auth.js';
 

@@ -409,18 +409,8 @@ Under `server.basePath`:
 | `ALL /mcp` | client identified by `Authorization: Bearer <key>` |
 | `ALL /k/<key>/mcp` | clients with `keyInPath: true` |
 | `ALL /c/<client>/mcp` | the named client; the key must still match it |
-| `GET /status`, `/status.json` | a client key; a read-only view of what that key sees |
 | `GET /healthz` | anyone, when `server.health` is on |
 | `GET`/`POST /approve/<token>` | whoever holds the link; no client key |
 | `GET /executor/<name>/attach` | an executor that dials in, with its own token |
 | `POST /executor/<name>/reply` | the same executor, carrying answers back |
 
-## `/status`
-
-A read-only page showing, for the key that asks: every server and its state,
-the tools that key ends up with, and what those definitions cost in bytes and
-rough tokens. `/status.json` returns the same as JSON.
-
-Read-only on purpose. A panel that wrote configuration would move the real
-state out of the file you can read in a diff. Turn it off with
-`server.status: false`.

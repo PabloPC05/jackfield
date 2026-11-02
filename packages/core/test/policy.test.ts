@@ -237,36 +237,3 @@ describe('notifications', () => {
     });
 });
 
-describe('the read-only view', () => {
-    it('shows what a key sees, and what it costs', async () => {
-        const response = await fetch(`${running.url}/status`, { headers: { Authorization: `Bearer ${KEY}` } });
-        const html = await response.text();
-
-        assert.equal(response.status, 200);
-        assert.match(html, /jackfield · agent/);
-        assert.match(html, /alpha_echo/);
-        assert.match(html, /tokens if all loaded/);
-        assert.equal(response.headers.get('cache-control'), 'no-store');
-    });
-
-    it('answers JSON for anything that has to parse it', async () => {
-        const response = await fetch(`${running.url}/status.json`, { headers: { Authorization: `Bearer ${KEY}` } });
-        const body = (await response.json()) as { client: string; totals: { tools: number }; bySource: unknown[] };
-
-        assert.equal(body.client, 'agent');
-        assert.ok(body.totals.tools > 0);
-        assert.ok(Array.isArray(body.bySource));
-    });
-
-    it('needs a key, like everything else', async () => {
-        const response = await fetch(`${running.url}/status`);
-        assert.equal(response.status, 401);
-        await response.text();
-    });
-
-    it('shows each key its own view and nobody else\'s', async () => {
-        const response = await fetch(`${running.url}/status.json`, { headers: { Authorization: `Bearer ${KEY_STRICT}` } });
-        const body = (await response.json()) as { client: string };
-        assert.equal(body.client, 'strict');
-    });
-});

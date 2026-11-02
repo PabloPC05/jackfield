@@ -9,7 +9,6 @@ import type { Logger } from '../util/logger.js';
 import { renderApprovalMissing, renderApprovalPage } from '../gateway/approvals.js';
 import { KeyRegistry, type Principal } from './auth.js';
 import { PanelMount } from '../panel/mount.js';
-import { buildStatusView, renderStatusPage } from './status.js';
 import { tokenMatches, type ReplyFrame } from './tunnel.js';
 
 /** JSON-RPC error codes used in HTTP-level answers. */
@@ -101,8 +100,7 @@ export class Router {
         const tunnel = /^\/executor\/([a-z0-9_-]{1,64})\/(attach|reply)$/.exec(path);
         if (tunnel?.[1] && tunnel[2]) return this.serveTunnel(request, tunnel[1], tunnel[2] as 'attach' | 'reply');
 
-        const wantsStatus = path === '/status' || path === '/status.json';
-        const route = wantsStatus ? { kind: 'plain' as const } : this.matchRoute(path);
+        const route = this.matchRoute(path);
         if (!route) return this.notFound();
 
         const principal = this.authenticate(request, route);
@@ -117,10 +115,6 @@ export class Router {
         }
 
         try {
-            if (wantsStatus) {
-                if (!this.gateway.config.server.status) return this.notFound();
-                return await this.serveStatus(principal, path.endsWith('.json'));
-            }
             return await this.serveMcp(request, principal);
         } catch (error) {
             this.logger.error('request failed', { error: errorMessage(error) });
@@ -173,33 +167,6 @@ export class Router {
         }
         this.logger.info('approval answered', { client: outcome.approval.client, tool: outcome.approval.tool, decision });
         return new Response(renderApprovalPage(outcome.approval, { wantsPassphrase }), { headers });
-    }
-
-    /** The read-only view of what one key sees. Writes nothing, ever. */
-    private async serveStatus(principal: Principal, asJson: boolean): Promise<Response> {
-        const catalog = await this.gateway.getCatalog(principal.clientId);
-        const view = buildStatusView({
-            clientId: principal.clientId,
-            ...(this.gateway.config.clients[principal.clientId]?.profile
-                ? { profile: this.gateway.config.clients[principal.clientId]?.profile as string }
-                : {}),
-            selection: this.gateway.selectionFor(principal.clientId),
-            catalog,
-            upstreams: this.gateway.upstreamStatuses(),
-            sessions: this.sessions.size,
-            pendingApprovals: this.gateway.approvals.pendingCount,
-            executors: this.gateway.tunnels.status().map(entry => ({ name: entry.name, inFlight: entry.inFlight }))
-        });
-
-        if (asJson) return Response.json(view, { headers: { 'Cache-Control': 'no-store' } });
-        return new Response(renderStatusPage(view), {
-            headers: {
-                'Content-Type': 'text/html; charset=utf-8',
-                'Cache-Control': 'no-store',
-                'X-Robots-Tag': 'noindex, nofollow',
-                'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
-            }
-        });
     }
 
     /**

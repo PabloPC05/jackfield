@@ -69,8 +69,7 @@ dropped is the half that breaks real setups:
   all — and the affected agent sees the change without a restart.
 - **Configuration belongs in git.** No database, no admin panel writing state
   behind your back. One file, secrets referenced rather than embedded, and a
-  deployment is a diff you can read. `/status` reads it back to you; it never
-  writes.
+  deployment is a diff you can read.
 
 ## Quickstart
 

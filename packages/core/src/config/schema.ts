@@ -328,11 +328,6 @@ export const configSchema = z.object({
             /** Answer `/healthz` without a key. */
             health: z.boolean().default(true),
             /**
-             * Serve `/status`: a read-only page showing what a key actually
-             * sees, and what it costs. Needs that key, and writes nothing.
-             */
-            status: z.boolean().default(true),
-            /**
              * Send permissive CORS headers. Off by default: agents call from a
              * server, and an open gateway in a browser is a gift to any page
              * the user has open.
